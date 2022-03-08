@@ -3,29 +3,35 @@ using Amazon.DynamoDBv2.DataModel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SmartVotingAPI.Models.Dynamo;
+using System.Text.Json;
 
 namespace SmartVotingAPI.Controllers.Application
 {
-    [Route("[controller]")]
+    [ApiVersion("1")]
+    [Route("v1")]
     [ApiController]
     public class GeneralController : BaseController
     {
         public GeneralController(IDynamoDBContext client) : base(client) { }
 
         [HttpGet]
-        [Route("{type}/{id}")]
-        public async Task<IActionResult> AgencyInfo(string id, string type)
+        [Route("{documentType}/{agencyCode}")]
+        public async Task<ActionResult<IEnumerable<AgencyInfo>>> GetAgencyInfo(string documentType, string agencyCode)
         {
-            if (id == null || type == null)
+            if (agencyCode == null || documentType == null)
+                return BadRequest();
+
+            if (agencyCode.ToLower() != "ec" && agencyCode.ToLower() != "sv")
+                return BadRequest();
+
+            if (documentType.ToLower() != "about" && documentType.ToLower() != "security")
+                return BadRequest();
+
+            var post = await dynamo.LoadAsync<AgencyInfo>(agencyCode.ToLower(), documentType.ToLower());
+            
+            if (post == null)
                 return NoContent();
 
-            if (id.ToLower() != "ec" && id.ToLower() != "sv")
-                return NoContent();
-
-            if (type.ToLower() != "about" && type.ToLower() != "security")
-                return NoContent();
-
-            var post = await dynamo.LoadAsync<AgencyInfo>(id.ToLower(), type.ToLower());
             return Ok(post);
         }
     }
