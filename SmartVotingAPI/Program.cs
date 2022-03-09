@@ -12,7 +12,6 @@ using SmartVotingAPI.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -20,7 +19,16 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Smart Voting API", Version = "v1" });
 });
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy("corspolicy",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000", "https://smartvoting.cc").AllowAnyHeader().AllowAnyMethod();
+        });
+});
 builder.Services.AddDbContext<PostgresDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("RDS_Postgres")));
+
 
 AWSOptions awsOptions = new AWSOptions
 {
@@ -54,6 +62,8 @@ app.UseSwaggerUI(c => {
 });
 
 app.UseHttpsRedirection();
+
+app.UseCors("corspolicy");
 
 app.UseAuthorization();
 
