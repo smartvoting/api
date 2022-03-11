@@ -15,9 +15,9 @@ namespace SmartVotingAPI.Models.Dynamo
         public string DocType { get; set; }
         
         [DynamoDBProperty("bodyText")]
-        public string BodyText { get; set; }
+        public string? BodyText { get; set; }
 
         [DynamoDBProperty("dateModified")]
-        public string DateModified { get; set; }
+        public string? DateModified { get; set; }
     }
 }

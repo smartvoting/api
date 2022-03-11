@@ -5,10 +5,13 @@ namespace SmartVotingAPI.Models.Postgres
 {
     public partial class ApiKey
     {
-        public Guid Key { get; set; }
-        public string Name { get; set; } = null!;
-        public bool Status { get; set; }
+        public Guid KeyId { get; set; }
+        public Guid AuthKey { get; set; }
+        public string KeyName { get; set; } = null!;
+        public bool IsProduction { get; set; }
+        public bool IsDevelopment { get; set; }
+        public bool IsActive { get; set; }
+        public int KeyTtl { get; set; }
         public DateTime Created { get; set; }
-        public DateTime Updated { get; set; }
     }
 }

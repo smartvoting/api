@@ -13,9 +13,9 @@ namespace SmartVotingAPI.Models.Dynamo
         public int TopicId { get; set; }
 
         [DynamoDBProperty("dateModified")]
-        public string DateModified { get; set; }
+        public string? DateModified { get; set; }
 
         [DynamoDBProperty("topicBody")]
-        public string TopicBody { get; set; }
+        public string? TopicBody { get; set; }
     }
 }

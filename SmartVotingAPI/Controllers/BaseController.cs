@@ -30,5 +30,18 @@ namespace SmartVotingAPI.Controllers
             postgres = context;
             dynamo = client;
         }
+
+        protected string GetMapquestCall(string postCode)
+        {
+            string baseUrl = "http://www.mapquestapi.com/geocoding/v1/address";
+            string apiKey = "CcqNKJY75Y0TotzTG1JZhLo3F8MrulEA";
+            return String.Format("{0}?key={1}&location={2}", baseUrl, apiKey, postCode);
+        }
+
+        protected string GetOpenNorthBoundariesCall(string lat, string lng)
+        {
+            string baseUrl = "https://represent.opennorth.ca/boundaries/?contains=";
+            return String.Format("{0}{1},{2}", baseUrl, lat, lng);
+        }
     }
 }
