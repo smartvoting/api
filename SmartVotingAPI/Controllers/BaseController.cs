@@ -38,10 +38,20 @@ namespace SmartVotingAPI.Controllers
             return String.Format("{0}?key={1}&location={2}", baseUrl, apiKey, postCode);
         }
 
-        protected string GetOpenNorthBoundariesCall(string lat, string lng)
+        protected string GetONBoundariesByCoordCall (string lat, string lng)
         {
             string baseUrl = "https://represent.opennorth.ca/boundaries/?contains=";
             return String.Format("{0}{1},{2}", baseUrl, lat, lng);
+        }
+
+        protected string GetONBoundariesByRidingIdCall(int ridingId, bool shape = false)
+        {
+            string baseUrl = "https://represent.opennorth.ca/boundaries/federal-electoral-districts/";
+
+            if (shape)
+                return String.Format("{0}{1}/shape", baseUrl, ridingId.ToString(), "shape");
+
+            return String.Format("{0}{1}", baseUrl, ridingId.ToString());
         }
     }
 }

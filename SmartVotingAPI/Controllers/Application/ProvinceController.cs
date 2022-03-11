@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
+using SmartVotingAPI.Models.ReactObjects;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -14,9 +15,18 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpGet]
         [Route("List")]
-        public async Task<ActionResult<IEnumerable<ProvinceList>>> GetProvinceList()
+        public async Task<ActionResult<IEnumerable<Province>>> GetProvinceList()
         {
-            var list = await postgres.ProvinceLists.ToArrayAsync();
+            //var list = await postgres.ProvinceLists.ToArrayAsync();
+
+            var list = await postgres.ProvinceLists
+                .Select(x => new Province
+                {
+                    Id = x.ProvinceId,
+                    Name = x.ProvinceName
+                })
+                .OrderBy(z => z.Id)
+                .ToArrayAsync();
 
             if (list == null)
                 return NoContent();
@@ -26,12 +36,21 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpGet]
         [Route("{provinceId}")]
-        public async Task<ActionResult<IEnumerable<ProvinceList>>> GetProvinceById(int provinceId)
+        public async Task<ActionResult<IEnumerable<Province>>> GetProvinceById(int provinceId)
         {
             if (provinceId <= 0)
                 return BadRequest();
 
-            var province = await postgres.ProvinceLists.FindAsync(provinceId);
+            //var province = await postgres.ProvinceLists.FindAsync(provinceId);
+
+            var province = await postgres.ProvinceLists
+                .Where(p => p.ProvinceId == provinceId)
+                .Select(x => new Province
+                {
+                    Id = x.ProvinceId,
+                    Name = x.ProvinceName
+                })
+                .FirstOrDefaultAsync();
 
             if (province == null)
                 return NoContent();

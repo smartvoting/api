@@ -2,7 +2,7 @@
 {
     public class Office
     {
-        public string Type { get; set; }
+        public string Type { get; set; } = null!;
         public string? StreetNumber { get; set; }
         public string? StreetName { get; set; }
         public string? UnitNumber { get; set; }

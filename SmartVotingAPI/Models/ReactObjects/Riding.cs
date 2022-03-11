@@ -1,4 +1,6 @@
-﻿namespace SmartVotingAPI.Models.ReactObjects
+﻿using System.Collections;
+
+namespace SmartVotingAPI.Models.ReactObjects
 {
     public class Riding
     {
@@ -9,5 +11,7 @@
         public string? Fax { get; set; }
         public Office? Office { get; set; }
         public Person[]? Candidates { get; set; }
+        public Coordinates? Centroid { get; set; }
+        public ArrayList? Outline { get; set; }
     }
 }

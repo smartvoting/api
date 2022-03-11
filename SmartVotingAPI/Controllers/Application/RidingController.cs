@@ -10,6 +10,7 @@ using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.ReactObjects;
 using System.Text.Json;
+using System.Collections;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -95,7 +96,7 @@ namespace SmartVotingAPI.Controllers.Application
                 string lat = mapquestElement.GetProperty("lat").ToString();
                 string lng = mapquestElement.GetProperty("lng").ToString();
 
-                HttpResponseMessage openNorthCall = await client.GetAsync(GetOpenNorthBoundariesCall(lat, lng));
+                HttpResponseMessage openNorthCall = await client.GetAsync(GetONBoundariesByCoordCall(lat, lng));
 
                 if (openNorthCall.IsSuccessStatusCode)
                 {
@@ -133,6 +134,84 @@ namespace SmartVotingAPI.Controllers.Application
                 }
 
                 return BadRequest();
+            }
+
+            return BadRequest();
+        }
+
+        [HttpGet]
+        [Route("Outline/Centroid/{ridingId}")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidById(int ridingId)
+        {
+            if (ridingId <= 0)
+                return BadRequest();
+
+            HttpResponseMessage openNorthCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId));
+
+            if (openNorthCall.IsSuccessStatusCode)
+            {
+                var openNorthResponse = await openNorthCall.Content.ReadAsStringAsync();
+                JsonDocument openNorthJson = JsonDocument.Parse(openNorthResponse);
+                JsonElement openNorthRoot = openNorthJson.RootElement;
+                Riding riding = new Riding();
+                riding.Id = ridingId;
+                riding.Name = openNorthRoot.GetProperty("name").ToString();
+                riding.Centroid = new Coordinates
+                {
+                    Latitude = openNorthRoot.GetProperty("centroid").GetProperty("coordinates")[1].GetDecimal(),
+                    Longitude = openNorthRoot.GetProperty("centroid").GetProperty("coordinates")[0].GetDecimal(),
+                    Type = openNorthRoot.GetProperty("centroid").GetProperty("type").ToString()
+                };
+
+                return Ok(riding);
+            }
+
+            return BadRequest();
+        }
+
+        [HttpGet]
+        [Route("Outline/Shape/{ridingId}")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetShapeById(int ridingId)
+        {
+            if (ridingId <= 0)
+                return BadRequest();
+
+            HttpResponseMessage onBoundaryCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId));
+            HttpResponseMessage onShapeCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId, true));
+
+            if (onBoundaryCall.IsSuccessStatusCode && onShapeCall.IsSuccessStatusCode)
+            {
+                var onBoundaryResponse = await onBoundaryCall.Content.ReadAsStringAsync();
+                JsonDocument onBoundaryJson = JsonDocument.Parse(onBoundaryResponse);
+                JsonElement onBoundaryRoot = onBoundaryJson.RootElement;
+
+                var onShapeResponse = await onShapeCall.Content.ReadAsStringAsync();
+                JsonDocument onShapeJson = JsonDocument.Parse(onShapeResponse);
+                JsonElement onShapeRoot = onShapeJson.RootElement;
+
+                var rawCoords = onShapeRoot.GetProperty("coordinates")[0][0].EnumerateArray();
+                int length = onShapeRoot.GetProperty("coordinates")[0][0].GetArrayLength();
+                Console.WriteLine("Shape Length: " + length);
+
+                ArrayList shape = new ArrayList();
+
+                foreach(JsonElement element in rawCoords)
+                {
+                    Coordinates point = new Coordinates()
+                    {
+                        Latitude = element[1].GetDecimal(),
+                        Longitude = element[0].GetDecimal()
+                    };
+
+                    shape.Add(point);
+                }
+
+                Riding riding = new Riding();
+                riding.Id = ridingId;
+                riding.Name = onBoundaryRoot.GetProperty("name").ToString();
+                riding.Outline = shape;
+
+                return Ok(riding);
             }
 
             return BadRequest();
