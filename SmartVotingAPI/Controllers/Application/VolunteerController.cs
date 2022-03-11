@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
+using SmartVotingAPI.Models.ReactObjects;
+using System.Text.Json.Nodes;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -14,15 +16,42 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPost]
         [Route("Apply")]
-        public async Task<IActionResult> PostApplyAsync(VolunteerApplication application)
+        public async Task<IActionResult> PostApply(Models.ReactObjects.VolunteerApplication application)
         {
-            if (application == null)
+            if (application.PartyId <= 0 || application.RidingId <= 0 || String.IsNullOrEmpty(application.FirstName) || String.IsNullOrEmpty(application.LastName) || String.IsNullOrEmpty(application.PhoneNumber) || String.IsNullOrEmpty(application.EmailAddress))
                 return BadRequest();
 
-            postgres.VolunteerApplications.Add(application);
-            await postgres.SaveChangesAsync();
+            DateTime timestamp = DateTime.Now;
+            Models.Postgres.VolunteerApplication volunteerApplication = new()
+            {
+                PartyId = application.PartyId,
+                RidingId = application.RidingId,
+                FirstName = application.FirstName,
+                LastName = application.LastName,
+                PhoneNumber = application.PhoneNumber,
+                EmailAddress = application.EmailAddress,
+                LegalResident = application.LegalResident,
+                PastVolunteer = application.PastVolunteer,
+                PartyMember = application.PartyMember,
+                IsApproved = false,
+                Submitted = timestamp,
+                Updated = timestamp
+            };
 
-            return Ok();
+            postgres.VolunteerApplications.Add(volunteerApplication);
+            var result = await postgres.SaveChangesAsync();
+
+            if (result != 1)
+                return BadRequest();
+
+            int id = volunteerApplication.ApplicationId;
+
+            var json = new JsonObject
+            {
+                ["application_id"] = id
+            };
+
+            return Ok(json);
         }
     }
 }
