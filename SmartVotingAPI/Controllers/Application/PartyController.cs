@@ -5,6 +5,7 @@ using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Dynamo;
 using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.ReactObjects;
+using System.Collections;
 using System.Text.Json;
 
 namespace SmartVotingAPI.Controllers.Application
@@ -20,51 +21,41 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("List")]
         public async Task<ActionResult<IEnumerable<Party>>> GetPartyList()
         {
-            //var list = await postgres.PartyLists.ToArrayAsync();
-
             var list = await postgres.PartyLists
                 .Where(p => p.PartyId > 0)
                 .Join(postgres.OfficeLists, p => p.OfficeId, o => o.OfficeId, (p, o) => new { p, o })
                 .Join(postgres.OfficeTypes, po => po.o.TypeId, t => t.TypeId, (po, t) => new { po, t })
-                .Join(postgres.SocialMediaLists, pot => pot.po.p.SocialId, s => s.SocialId, (pot, s) => new { pot, s })
-                .Join(postgres.ProvinceLists, pots => pots.pot.po.o.ProvinceId, l => l.ProvinceId, (pots, l) => new {pots, l})
+                .Join(postgres.ProvinceLists, pot => pot.po.o.ProvinceId, l => l.ProvinceId, (pot, l) => new { pot, l })
                 .Select(x => new Party
                 {
-                    Id = x.pots.pot.po.p.PartyId,
-                    Name = x.pots.pot.po.p.PartyName,
-                    Domain = x.pots.pot.po.p.PartyDomain,
-                    EmailAddress = x.pots.pot.po.p.EmailAddress,
-                    PhoneNumber = x.pots.pot.po.p.PhoneNumber,
-                    FaxNumber = x.pots.pot.po.p.FaxNumber,
-                    IsRegistered = x.pots.pot.po.p.IsRegistered,
-                    DeregisterReason = x.pots.pot.po.p.DeregisterReason,
-                    Updated = x.pots.pot.po.p.Updated,
+                    Id = x.pot.po.p.PartyId,
+                    Name = x.pot.po.p.PartyName,
+                    Domain = x.pot.po.p.PartyDomain,
+                    EmailAddress = x.pot.po.p.EmailAddress,
+                    PhoneNumber = x.pot.po.p.PhoneNumber,
+                    FaxNumber = x.pot.po.p.FaxNumber,
+                    IsRegistered = x.pot.po.p.IsRegistered,
+                    DeregisterReason = x.pot.po.p.DeregisterReason,
+                    Updated = x.pot.po.p.Updated,
                     Office = new Office
                     {
-                        Type = x.pots.pot.t.TypeName,
-                        StreetNumber = x.pots.pot.po.o.StreetNumber,
-                        StreetName = x.pots.pot.po.o.StreetName,
-                        UnitNumber = x.pots.pot.po.o.UnitNumber,
-                        City = x.pots.pot.po.o.City,
+                        Type = x.pot.t.TypeName,
+                        StreetNumber = x.pot.po.o.StreetNumber,
+                        StreetName = x.pot.po.o.StreetName,
+                        UnitNumber = x.pot.po.o.UnitNumber,
+                        City = x.pot.po.o.City,
                         Province = x.l.ProvinceName,
-                        PostCode = x.pots.pot.po.o.PostCode,
-                        PoBox = x.pots.pot.po.o.PoBox,
-                        IsPublic = x.pots.pot.po.o.IsPublic
+                        PostCode = x.pot.po.o.PostCode,
+                        PoBox = x.pot.po.o.PoBox,
+                        IsPublic = x.pot.po.o.IsPublic
                     },
-                    SocialMedia = new SocialMedia
-                    {
-                        TwitterId = x.pots.s.TwitterId,
-                        InstagramId = x.pots.s.InstagramId,
-                        FacebookId = x.pots.s.FacebookId,
-                        YoutubeId = x.pots.s.YoutubeId,
-                        SnapchatId = x.pots.s.SnapchatId,
-                        FlickrId = x.pots.s.FlickrId,
-                        TiktokId = x.pots.s.TiktokId
-                    }
+                    SocialMedia = null,
+                    PartyLeader = null,
+                    Candidates = null
                 })
                 .OrderBy(z => z.Id)
                 .ToArrayAsync();
-            
+
             if (list == null)
                 return NoContent();
 
@@ -76,9 +67,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Party>>> GetPartyById(int partyId)
         {
             if (partyId <= 0)
-                return BadRequest();
-
-            //var party = await postgres.PartyLists.FindAsync(partyId);
+                return BadRequest(new { message = "Invalid party id number."});
 
             var party = await postgres.PartyLists
                 .Where(p => p.PartyId == partyId)
@@ -172,7 +161,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult> GetPartyIssues(int partyId)
         {
             if (partyId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid party id number." });
 
             var topics = await postgres.PlatformTopics.ToArrayAsync();
             var entries = await dynamo.QueryAsync<PartyPlatform>(partyId).GetRemainingAsync();
@@ -196,7 +185,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<PartyPlatform>>> GetPartyIssueById(int partyId, int topicId)
         {
             if (partyId <= 0 || topicId <= 0 || topicId > 25)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid party or topic id number." });
 
             var issue = await dynamo.LoadAsync<PartyPlatform>(partyId, topicId);
 

@@ -34,7 +34,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<PlatformTopic>>> GetPlatformTopicById(int topicId)
         {
             if (topicId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid topic id number." });
 
             var topic = await postgres.PlatformTopics.FindAsync(topicId);
 

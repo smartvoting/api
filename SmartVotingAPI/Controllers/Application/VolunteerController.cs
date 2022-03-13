@@ -42,7 +42,7 @@ namespace SmartVotingAPI.Controllers.Application
             var result = await postgres.SaveChangesAsync();
 
             if (result != 1)
-                return BadRequest();
+                return BadRequest(new { message = "Failed to save entry in database." });
 
             int id = volunteerApplication.ApplicationId;
 

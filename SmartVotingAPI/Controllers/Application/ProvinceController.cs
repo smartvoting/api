@@ -39,7 +39,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Province>>> GetProvinceById(int provinceId)
         {
             if (provinceId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid province id number." });
 
             //var province = await postgres.ProvinceLists.FindAsync(provinceId);
 

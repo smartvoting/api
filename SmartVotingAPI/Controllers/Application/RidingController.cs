@@ -66,7 +66,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingById(int ridingId)
         {
             if (ridingId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid riding id number." });
 
             //var riding = await postgres.RidingLists.FindAsync(ridingId);
 
@@ -83,7 +83,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByPostCode(string postCode)
         {
             if (String.IsNullOrEmpty(postCode))
-                return BadRequest();
+                return BadRequest(new { message = "A postal code is required." });
 
             HttpResponseMessage mapquestCall = await client.GetAsync(GetMapquestCall(postCode));
             
@@ -118,10 +118,10 @@ namespace SmartVotingAPI.Controllers.Application
                         }
                     }
 
-                    Console.WriteLine();
+                    //Console.WriteLine();
 
                     if (ridingId == -1)
-                        return BadRequest();
+                        return BadRequest(new { message = "Failed to get riding id number from Open North API." });
 
                     //var riding = await postgres.RidingLists.FindAsync(ridingId);
 
@@ -133,10 +133,10 @@ namespace SmartVotingAPI.Controllers.Application
                     return Ok(riding);
                 }
 
-                return BadRequest();
+                return BadRequest(new { message = "Open North API call failed." });
             }
 
-            return BadRequest();
+            return BadRequest(new { message = "Mapquest API call failed." });
         }
 
         [HttpGet]
@@ -144,7 +144,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidById(int ridingId)
         {
             if (ridingId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid riding id number." });
 
             HttpResponseMessage openNorthCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId));
 
@@ -166,7 +166,7 @@ namespace SmartVotingAPI.Controllers.Application
                 return Ok(riding);
             }
 
-            return BadRequest();
+            return BadRequest(new { message = "Open North API call failed." });
         }
 
         [HttpGet]
@@ -174,7 +174,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Riding>>> GetShapeById(int ridingId)
         {
             if (ridingId <= 0)
-                return BadRequest();
+                return BadRequest(new { message = "Invalid riding id number." });
 
             HttpResponseMessage onBoundaryCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId));
             HttpResponseMessage onShapeCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId, true));
@@ -214,7 +214,7 @@ namespace SmartVotingAPI.Controllers.Application
                 return Ok(riding);
             }
 
-            return BadRequest();
+            return BadRequest(new { message = "Open North API call failed." });
         }
 
         private async Task<Riding>? GetRidingByIdNumber(int id)

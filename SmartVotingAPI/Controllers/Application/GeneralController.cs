@@ -18,14 +18,17 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("{documentType}/{agencyCode}")]
         public async Task<ActionResult<IEnumerable<AgencyInfo>>> GetAgencyInfo(string documentType, string agencyCode)
         {
-            if (agencyCode == null || documentType == null)
-                return BadRequest();
+            if (agencyCode == null)
+                return BadRequest(new { message = "Agency code is required."});
+
+            if (documentType == null)
+                return BadRequest(new { message = "Document type is required." });
 
             if (agencyCode.ToLower() != "ec" && agencyCode.ToLower() != "sv")
-                return BadRequest();
+                return BadRequest(new { message = "Agency code is not valid."});
 
             if (documentType.ToLower() != "about" && documentType.ToLower() != "security")
-                return BadRequest();
+                return BadRequest(new { message = "Document type is not valid."});
 
             var post = await dynamo.LoadAsync<AgencyInfo>(agencyCode.ToLower(), documentType.ToLower());
             
