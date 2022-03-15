@@ -2,7 +2,8 @@
 {
     public class AppSettings
     {
-        public string VotingJWTSignature { get; set; }
+        public string HcaptchaSecret { get; set; }
         public string MapquestAPIKey { get; set; }
+        public string VotingJWTSignature { get; set; }
     }
 }

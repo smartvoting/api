@@ -11,6 +11,7 @@ using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.ReactObjects;
 using System.Text.Json;
 using System.Collections;
+using Microsoft.Extensions.Options;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -20,8 +21,9 @@ namespace SmartVotingAPI.Controllers.Application
     public class RidingController : BaseController
     {
         private static HttpClient client = new HttpClient();
-        public RidingController(PostgresDbContext _context, IDynamoDBContext _client) : base(_context, _client) { }
+        public RidingController(PostgresDbContext _context, IDynamoDBContext _client, IOptions<AppSettings> _app) : base(_context, _client, _app) { }
 
+        #region Routes
         [HttpGet]
         [Route("List")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingList()
@@ -30,8 +32,8 @@ namespace SmartVotingAPI.Controllers.Application
 
             var list = await postgres.RidingLists
                 .Join(postgres.OfficeLists, r => r.OfficeId, o => o.OfficeId, (r, o) => new { r, o })
-                .Join(postgres.OfficeTypes, ro => ro.o.TypeId, t => t.TypeId, (ro, t) => new {ro, t})
-                .Join(postgres.ProvinceLists, rot => rot.ro.o.ProvinceId, p => p.ProvinceId, (rot, p) => new {rot, p})
+                .Join(postgres.OfficeTypes, ro => ro.o.TypeId, t => t.TypeId, (ro, t) => new { ro, t })
+                .Join(postgres.ProvinceLists, rot => rot.ro.o.ProvinceId, p => p.ProvinceId, (rot, p) => new { rot, p })
                 .Select(x => new Riding
                 {
                     Id = x.rot.ro.r.RidingId,
@@ -61,6 +63,7 @@ namespace SmartVotingAPI.Controllers.Application
             return Ok(list);
         }
 
+        #region Locate With Parameter
         [HttpGet]
         [Route("{ridingId}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingById(int ridingId)
@@ -79,6 +82,39 @@ namespace SmartVotingAPI.Controllers.Application
         }
 
         [HttpGet]
+        [Route("Locate/{city}")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByCity(string city)
+        {
+            if (String.IsNullOrEmpty(city))
+                return BadRequest(new { message = "A city is required." });
+
+            // rold_id for candidates = 5
+
+
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("Locate/{candidateName}")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByCandidateName(string candidateName)
+        {
+            if (String.IsNullOrEmpty(candidateName))
+                return BadRequest(new { message = "A candidate name is required." });
+
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("Locate/{ridingName}")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByRidingName(string ridingName)
+        {
+            if (String.IsNullOrEmpty(ridingName))
+                return BadRequest(new { message = "A riding name is required." });
+
+            return Ok();
+        }
+
+        [HttpGet]
         [Route("Locate/{postCode}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByPostCode(string postCode)
         {
@@ -86,7 +122,7 @@ namespace SmartVotingAPI.Controllers.Application
                 return BadRequest(new { message = "A postal code is required." });
 
             HttpResponseMessage mapquestCall = await client.GetAsync(GetMapquestCall(postCode));
-            
+
             if (mapquestCall.IsSuccessStatusCode)
             {
                 var mapquestResponse = await mapquestCall.Content.ReadAsStringAsync();
@@ -137,6 +173,26 @@ namespace SmartVotingAPI.Controllers.Application
             }
 
             return BadRequest(new { message = "Mapquest API call failed." });
+        }
+        #endregion
+
+        #region Centroid & Shapes
+        [HttpGet]
+        [Route("Outline/Centroid/List")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidList()
+        {
+            string url = "https://represent.opennorth.ca/boundaries/federal-electoral-districts/centroid?limit=1000";
+            HttpResponseMessage onCall = await client.GetAsync(url);
+
+            if (onCall.IsSuccessStatusCode)
+            {
+                var onResponse = await onCall.Content.ReadAsStringAsync();
+                JsonElement onRoot = JsonDocument.Parse(onResponse).RootElement;
+                Console.WriteLine();
+                return Ok();
+            }
+
+            return BadRequest(new { message = "Open North API call failed." });
         }
 
         [HttpGet]
@@ -195,7 +251,7 @@ namespace SmartVotingAPI.Controllers.Application
 
                 ArrayList shape = new ArrayList();
 
-                foreach(JsonElement element in rawCoords)
+                foreach (JsonElement element in rawCoords)
                 {
                     Coordinates point = new Coordinates()
                     {
@@ -216,7 +272,11 @@ namespace SmartVotingAPI.Controllers.Application
 
             return BadRequest(new { message = "Open North API call failed." });
         }
+        #endregion
 
+        #endregion
+
+        #region Support Methods
         private async Task<Riding>? GetRidingByIdNumber(int id)
         {
             var riding = await postgres.RidingLists
@@ -290,5 +350,6 @@ namespace SmartVotingAPI.Controllers.Application
 
             return riding;
         }
+        #endregion
     }
 }

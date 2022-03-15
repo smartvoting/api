@@ -2,7 +2,7 @@
 
 namespace SmartVotingAPI.Models.Vote
 {
-    public class StepThree
+    public class StepThree : StepBase
     {
         [Required]
         public TaxEntry LineOne { get; set; }

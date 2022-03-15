@@ -2,7 +2,7 @@
 
 namespace SmartVotingAPI.Models.Vote
 {
-    public class StepOne
+    public class StepOne : StepBase
     {
         [Required]
         public bool IsCitizen { get; set; }
@@ -19,7 +19,7 @@ namespace SmartVotingAPI.Models.Vote
         public string LastName { get; set; }
 
         [Required]
-        public DateOnly BirthDate { get; set; }
+        public DateTime BirthDate { get; set; }
 
         [Required]
         [Range(1, 3)]

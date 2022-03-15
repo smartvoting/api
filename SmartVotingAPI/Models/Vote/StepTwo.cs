@@ -2,7 +2,7 @@
 
 namespace SmartVotingAPI.Models.Vote
 {
-    public class StepTwo
+    public class StepTwo : StepBase
     {
         [Required]
         [StringLength(12)]

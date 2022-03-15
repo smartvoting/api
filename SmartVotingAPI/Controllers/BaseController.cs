@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using SmartVotingAPI.Data;
+using System.Text.Json.Nodes;
 
 namespace SmartVotingAPI.Controllers
 {
@@ -14,20 +15,21 @@ namespace SmartVotingAPI.Controllers
         protected readonly IOptions<AppSettings> appSettings;
         protected readonly PostgresDbContext postgres;
         protected readonly IDynamoDBContext dynamo;
+        private static HttpClient client = new HttpClient();
 
         public BaseController() { }
-        public BaseController(PostgresDbContext context) => postgres = context;
-        public BaseController(IDynamoDBContext client) => dynamo = client;
+        public BaseController(PostgresDbContext dbContext) => postgres = dbContext;
+        public BaseController(IDynamoDBContext dynamoContext) => dynamo = dynamoContext;
         public BaseController(IOptions<AppSettings> app) => appSettings = app;
-        public BaseController(PostgresDbContext context, IDynamoDBContext client)
+        public BaseController(PostgresDbContext dbContext, IDynamoDBContext dynamoContext)
         {
-            postgres = context;
-            dynamo = client;
+            postgres = dbContext;
+            dynamo = dynamoContext;
         }
-        public BaseController(PostgresDbContext context, IDynamoDBContext client, IOptions<AppSettings> app)
+        public BaseController(PostgresDbContext dbContext, IDynamoDBContext dynamoContext, IOptions<AppSettings> app)
         {
-            postgres = context;
-            dynamo = client;
+            postgres = dbContext;
+            dynamo = dynamoContext;
             appSettings = app;
         }
 
@@ -52,6 +54,25 @@ namespace SmartVotingAPI.Controllers
                 return String.Format("{0}{1}/shape", baseUrl, ridingId.ToString(), "shape");
 
             return String.Format("{0}{1}", baseUrl, ridingId.ToString());
+        }
+
+        protected async Task<bool> VerifyHcaptcha(string token, string remoteIp)
+        {
+            string baseUrl = "https://hcaptcha.com/siteverify";
+            List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>("secret", appSettings.Value.HcaptchaSecret),
+                new KeyValuePair<string, string>("response", token),
+                new KeyValuePair<string, string>("remoteip", remoteIp)
+            };
+            HttpResponseMessage response = await client.PostAsync(baseUrl, new FormUrlEncodedContent(postData));
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(responseBody);
+            }
+            return false;
         }
     }
 }

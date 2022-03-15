@@ -2,7 +2,7 @@
 
 namespace SmartVotingAPI.Models.Vote
 {
-    public class StepSix
+    public class StepSix : StepBase
     {
         [Required]
         public bool UserConfirmation { get; set; }
