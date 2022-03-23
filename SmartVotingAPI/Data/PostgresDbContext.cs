@@ -466,31 +466,54 @@ namespace SmartVotingAPI.Data
                     .ValueGeneratedNever()
                     .HasColumnName("voter_id");
 
-                entity.Property(e => e.EmailAddress)
-                    .HasColumnType("character varying")
-                    .HasColumnName("email_address");
+                entity.Property(e => e.RidingId).HasColumnName("riding_id");
 
                 entity.Property(e => e.FirstName)
                     .HasColumnType("character varying")
                     .HasColumnName("first_name");
-
-                entity.Property(e => e.HomeAddress)
+                
+                entity.Property(e => e.MiddleName)
                     .HasColumnType("character varying")
-                    .HasColumnName("home_address");
+                    .HasColumnName("middle_name");
 
                 entity.Property(e => e.LastName)
                     .HasColumnType("character varying")
                     .HasColumnName("last_name");
 
-                entity.Property(e => e.MiddleName)
+                entity.Property(e => e.BirthDate)
+                    .HasColumnType("date")
+                    .HasColumnName("birth_date");
+
+                entity.Property(e => e.Gender).HasColumnName("gender");
+
+                entity.Property(e => e.StreetNumber).HasColumnName("street_number");
+
+                entity.Property(e => e.StreetName)
                     .HasColumnType("character varying")
-                    .HasColumnName("middle_name");
+                    .HasColumnName("street_name");
+
+                entity.Property(e => e.UnitNumber)
+                    .HasColumnType("character varying")
+                    .HasColumnName("unit_number");
+
+                entity.Property(e => e.City)
+                    .HasColumnType("character varying")
+                    .HasColumnName("city");
+
+                entity.Property(e => e.ProvinceId).HasColumnName("province_id");
+
+                entity.Property(e => e.PostCode)
+                    .HasColumnType("character varying")
+                    .HasColumnName("post_code");
+
+                entity.Property(e => e.EmailAddress)
+                    .HasColumnType("character varying")
+                    .HasColumnName("email_address");
 
                 entity.Property(e => e.PhoneNumber)
                     .HasColumnType("character varying")
                     .HasColumnName("phone_number");
 
-                entity.Property(e => e.RidingId).HasColumnName("riding_id");
             });
 
             modelBuilder.Entity<VoterSecurity>(entity =>
@@ -509,17 +532,15 @@ namespace SmartVotingAPI.Data
                 entity.HasIndex(e => e.VoterId, "voter_security_voter_id_uindex")
                     .IsUnique();
 
-                entity.Property(e => e.CardId)
-                    .HasMaxLength(16)
-                    .HasColumnName("card_id");
+                entity.Property(e => e.VoterId).HasColumnName("voter_id");
 
-                entity.Property(e => e.BirthDate).HasColumnName("birth_date");
+                entity.Property(e => e.CardId)
+                    .HasMaxLength(12)
+                    .HasColumnName("card_id");
 
                 entity.Property(e => e.CardPin).HasColumnName("card_pin");
 
-                entity.Property(e => e.EmailPin)
-                    .HasColumnType("character varying")
-                    .HasColumnName("email_pin");
+                entity.Property(e => e.EmailPin).HasColumnName("email_pin");
 
                 entity.Property(e => e.Sin).HasColumnName("sin");
 
@@ -539,11 +560,9 @@ namespace SmartVotingAPI.Data
 
                 entity.Property(e => e.Tax26000).HasColumnName("tax_26000");
 
-                entity.Property(e => e.Tax31270).HasColumnName("tax_31270");
+                entity.Property(e => e.Tax31220).HasColumnName("tax_31220");
 
                 entity.Property(e => e.Tax58240).HasColumnName("tax_58240");
-
-                entity.Property(e => e.VoterId).HasColumnName("voter_id");
             });
 
             OnModelCreatingPartial(modelBuilder);

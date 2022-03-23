@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace SmartVotingAPI.Models.ReactObjects
+namespace SmartVotingAPI.Models.DTO
 {
     public class Riding
     {

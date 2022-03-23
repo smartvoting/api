@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.ReactObjects
+namespace SmartVotingAPI.Models.DTO
 {
     public class VolunteerApplication
     {

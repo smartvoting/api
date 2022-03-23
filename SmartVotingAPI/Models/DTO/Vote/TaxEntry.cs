@@ -1,11 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.Vote
+namespace SmartVotingAPI.Models.DTO.Vote
 {
     public class TaxEntry
     {
         [Required]
-        [StringLength(5)]
         public int LineNumber { get; set; }
 
         [Required]

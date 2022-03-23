@@ -1,14 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.Vote
+namespace SmartVotingAPI.Models.DTO.Vote
 {
     public class StepOne : StepBase
     {
         [Required]
         public bool IsCitizen { get; set; }
-
-        [Required]
-        public bool IsLegalAge { get; set; }
 
         [Required]
         public string FirstName { get; set; }

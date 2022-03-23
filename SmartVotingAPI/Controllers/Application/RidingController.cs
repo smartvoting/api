@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
-using SmartVotingAPI.Models.ReactObjects;
+using SmartVotingAPI.Models.DTO;
 using System.Text.Json;
 using System.Collections;
 using Microsoft.Extensions.Options;
@@ -315,7 +315,7 @@ namespace SmartVotingAPI.Controllers.Application
                 .Join(postgres.OfficeLists, ps => ps.p.OfficeId, o => o.OfficeId, (ps, o) => new { ps, o })
                 .Join(postgres.OfficeTypes, pso => pso.o.TypeId, t => t.TypeId, (pso, t) => new { pso, t })
                 .Join(postgres.ProvinceLists, psot => psot.pso.o.ProvinceId, n => n.ProvinceId, (psot, n) => new { psot, n })
-                .Select(x => new Models.ReactObjects.Person
+                .Select(x => new Models.DTO.Person
                 {
                     FirstName = x.psot.pso.ps.p.FirstName,
                     LastName = x.psot.pso.ps.p.LastName,

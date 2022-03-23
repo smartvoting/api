@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.Vote
+namespace SmartVotingAPI.Models.DTO.Vote
 {
     public class StepThree : StepBase
     {

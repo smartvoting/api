@@ -3,11 +3,16 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.Runtime;
+using Amazon.SimpleEmail;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SmartVotingAPI.Data;
+using Swashbuckle.AspNetCore.Filters;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,9 +21,17 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
-builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwaggerGen(o =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Smart Voting API", Version = "v1" });
+    o.SwaggerDoc("v1", new OpenApiInfo { Title = "Smart Voting API", Version = "v1" });
+    o.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Description = "Standard Authorization header using the Bearer scheme (\"bearer {token_value}\")",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
+    });
+    o.OperationFilter<SecurityRequirementsOperationFilter>();
 });
 builder.Services.AddCors(o =>
 {
@@ -29,6 +42,17 @@ builder.Services.AddCors(o =>
         });
 });
 builder.Services.AddDbContext<PostgresDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("RDS_Postgres")));
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSettings").GetSection("Vote:TokenSignature").Value)),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
 
 
 AWSOptions awsOptions = new AWSOptions
@@ -46,6 +70,8 @@ builder.Services.AddApiVersioning(o =>
     o.AssumeDefaultVersionWhenUnspecified = true;
     o.ApiVersionReader = new HeaderApiVersionReader("X-API-Version");
 });
+
+builder.Services.AddAWSService<IAmazonSimpleEmailService>();
 
 
 var app = builder.Build();
@@ -65,6 +91,8 @@ app.UseSwaggerUI(c => {
 app.UseHttpsRedirection();
 
 app.UseCors("corspolicy");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
