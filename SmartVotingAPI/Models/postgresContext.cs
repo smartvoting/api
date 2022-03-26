@@ -2,17 +2,16 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using SmartVotingAPI.Models.Postgres;
 
-namespace SmartVotingAPI.Data
+namespace SmartVotingAPI.Models
 {
-    public partial class PostgresDbContext : DbContext
+    public partial class postgresContext : DbContext
     {
-        public PostgresDbContext()
+        public postgresContext()
         {
         }
 
-        public PostgresDbContext(DbContextOptions<PostgresDbContext> options)
+        public postgresContext(DbContextOptions<postgresContext> options)
             : base(options)
         {
         }
@@ -331,7 +330,7 @@ namespace SmartVotingAPI.Data
 
                 entity.Property(e => e.PartyId)
                     .HasColumnName("party_id")
-                    .HasDefaultValueSql("0");
+                    .HasDefaultValueSql("'11111111-1111-1111-1111-111111111111'::uuid");
 
                 entity.Property(e => e.PhoneNumber)
                     .HasColumnType("character varying")
@@ -607,8 +606,6 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.UnitNumber)
                     .HasColumnType("character varying")
                     .HasColumnName("unit_number");
-
-                entity.Property(e => e.VoteCast).HasColumnName("vote_cast");
             });
 
             modelBuilder.Entity<VoterSecurity>(entity =>

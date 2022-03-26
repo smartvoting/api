@@ -1,18 +1,19 @@
-﻿using Amazon.DynamoDBv2.DataModel;
+﻿using Amazon.QLDB.Driver;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
+using SmartVotingAPI.Models.DTO;
 using SmartVotingAPI.Models.DTO.Vote;
-using SmartVotingAPI.Models.Postgres;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Amazon.QLDB.Driver.Generic;
+using Amazon.QLDB.Driver.Serialization;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -23,6 +24,7 @@ namespace SmartVotingAPI.Controllers.Application
     [Authorize(Roles = "Voter")]
     public class VoteController : BaseController
     {
+        private const string tokenIssuer = "api.smartvoting.cc";
         private static HttpClient client = new HttpClient();
 
         public VoteController(PostgresDbContext _context, IOptions<AppSettings> _app) : base(_context, _app) { }
@@ -49,6 +51,7 @@ namespace SmartVotingAPI.Controllers.Application
                 .Where(a => a.City.Equals(data.City))
                 .Where(a => a.ProvinceId == data.Province)
                 .Where(a => a.PostCode.Equals(data.PostCode))
+                .Where(a => !a.VoteCast)
                 .Select(a => new VoterToken
                 {
                     VoterId = a.VoterId.ToString(),
@@ -59,7 +62,7 @@ namespace SmartVotingAPI.Controllers.Application
             if (voter == null)
                 return BadRequest(NewReturnMessage("No voter found with the provided information."));
 
-            string token = CreateToken(voter);
+            string token = CreateVoterToken(voter);
 
             return Ok(token);
         }
@@ -74,16 +77,31 @@ namespace SmartVotingAPI.Controllers.Application
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            string voterClaim = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
+
+            //var security = await postgres.VoterSecurities
+            //    .Where(a => a.VoterId.Equals(voterClaim))
+            //    .Where(a => a.CardId.Equals(data.CardId))
+            //    .Where(a => a.CardPin == data.CardPin)
+            //    .Where(a => a.Sin == data.SinDigits)
+            //    .FirstOrDefaultAsync();
 
             var security = await postgres.VoterSecurities
                 .Where(a => a.VoterId.Equals(voterClaim))
-                .Where(a => a.CardId.Equals(data.CardId))
-                .Where(a => a.CardPin == data.CardPin)
-                .Where(a => a.Sin == data.SinDigits)
+                .Select(a => new
+                {
+                    a.CardId,
+                    a.CardPin,
+                    a.Sin
+                })
                 .FirstOrDefaultAsync();
 
             if (security == null)
+                return BadRequest(NewReturnMessage("No voter found with the provided information."));
+
+            bool validRequest = security.CardId.Equals(data.CardId) && security.CardPin.Equals(data.CardPin) && security.Sin.Equals(data.SinDigits);
+
+            if (!validRequest)
                 return BadRequest(NewReturnMessage("No voter found with the provided information."));
 
             return Ok();
@@ -99,10 +117,10 @@ namespace SmartVotingAPI.Controllers.Application
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            string voterClaim = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
 
             var tax = await postgres.VoterSecurities
-                .Where(a => a.VoterId.ToString().Equals(voterClaim))
+                .Where(a => a.VoterId.Equals(voterClaim))
                 .Select(a => new int[]
                 {
                     a.Tax10100,
@@ -122,53 +140,94 @@ namespace SmartVotingAPI.Controllers.Application
             bool lineTwo = tax[data.LineTwo.LineNumber] == data.LineTwo.LineValue;
             bool lineThree = tax[data.LineThree.LineNumber] == data.LineThree.LineValue;
 
-            if (lineOne && lineTwo && lineThree)
+            if (!lineOne || !lineTwo || !lineThree)
+                return BadRequest(NewReturnMessage("Tax information did not match records."));
+
+            Random random = new Random();
+            int pin = random.Next(10000000, 100000000);
+            var voter = await postgres.VoterSecurities.FindAsync(voterClaim);
+            voter.EmailPin = pin;
+            postgres.VoterSecurities.Update(voter);
+            await postgres.SaveChangesAsync();
+
+            var email = await postgres.VoterLists
+                .Where(a => a.VoterId.Equals(voterClaim))
+                .Select(a => new
+                { 
+                    a.EmailAddress
+                })
+                .FirstOrDefaultAsync();
+
+            if (email == null)
+                return BadRequest(NewReturnMessage("Voter email address not found."));
+
+            JsonObject json = new()
             {
-                Random random = new Random();
-                int pin = random.Next(10000000, 100000000);
-                var entry = await postgres.VoterSecurities.SingleAsync(a => a.VoterId.ToString().Equals(voterClaim));
-                entry.EmailPin = pin;
-                postgres.VoterSecurities.Update(entry);
-                await postgres.SaveChangesAsync();
+                ["pin"] = pin
+            };
 
-                string? email = await postgres.VoterLists.Where(a => a.VoterId.ToString().Equals(voterClaim)).Select(a => a.EmailAddress).FirstOrDefaultAsync();
+            string emailData = JsonSerializer.Serialize(json);
 
-                if (email == null)
-                    return BadRequest(NewReturnMessage("Voter email address not found."));
+            //bool emailSent = await SendEmailSES(email, "vote-email-pin", emailData);
+            bool emailSent = true;
 
-                JsonObject json = new()
-                {
-                    ["pin"] = pin
-                };
+            //string body = VotePinEmail(pin);
 
-                string emailData = JsonSerializer.Serialize(json);
+            //bool emailSent = await SendEmailSES(email, "Voter Authentication PIN", body);
 
-                bool emailSent = await SendEmailSES(email, "vote-email-pin", emailData);
+            if (emailSent)
+                return Ok();
 
-                //string body = VotePinEmail(pin);
+            return BadRequest(NewReturnMessage("Error sending authentication pin."));
 
-                //bool emailSent = await SendEmailSES(email, "Voter Authentication PIN", body);
 
-                if (emailSent)
-                    return Ok();
-
-                return BadRequest(NewReturnMessage("Error sending authentication pin."));
-            }
-
-            return BadRequest(NewReturnMessage("Tax information did not match records."));
         }
         #endregion
 
         #region Step Four
         [HttpPost]
         [Route("Step/4")]
-        public async Task<IActionResult> StepFour(StepFour data)
+        public async Task<ActionResult<IEnumerable<Candidate>>> StepFour(StepFour data)
         {
             string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            return Ok();
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
+            int ridingClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
+            const int candidateRoleId = 5;
+
+            var pin = await postgres.VoterSecurities
+                .Where(a => a.VoterId.Equals(voterClaim))
+                .Select(a => a.EmailPin)
+                .FirstOrDefaultAsync();
+
+            if (pin == data.EmailPin && ridingClaim > 0)
+            {
+                var list = await postgres.People
+                    .Where(a => a.RoleId == candidateRoleId)
+                    .Where(a => a.RidingId == ridingClaim)
+                    .Join(postgres.PartyLists, a => a.PartyId, b => b.PartyId, (a, b) => new { a, b })
+                    .Join(postgres.RidingLists, ab => ab.a.RidingId, c => c.RidingId, (ab, c) => new { ab, c })
+                    .Select(z => new Candidate
+                    {
+                        CandidateId = z.ab.a.PersonId,
+                        FirstName = z.ab.a.FirstName,
+                        LastName = z.ab.a.LastName,
+                        PartyId = z.ab.a.PartyId,
+                        PartyName = z.ab.b.PartyName,
+                        RidingId = ridingClaim,
+                        RidingName = z.c.RidingName
+                    })
+                    .ToArrayAsync();
+
+                if (list == null)
+                    return BadRequest(NewReturnMessage("An error occurred getting the riding candidates."));
+
+                return Ok(list);
+            }
+
+            return BadRequest(NewReturnMessage("The email pin provided does not match the pin on record."));
         }
         #endregion
 
@@ -181,7 +240,24 @@ namespace SmartVotingAPI.Controllers.Application
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            return Ok();
+            string voterClaim = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
+            int ridingClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
+
+            VoterToken voter = new()
+            {
+                VoterId = voterClaim,
+                RidingId = ridingClaim
+            };
+
+            VoteToken vote = new()
+            {
+                RidingId = data.RidingId,
+                CandidateId = data.CandidateId
+            };
+
+            string token = CreateVoteToken(voter, vote);
+
+            return Ok(token);
         }
         #endregion
 
@@ -193,6 +269,49 @@ namespace SmartVotingAPI.Controllers.Application
             string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
+
+
+            if (!data.UserConfirmation)
+                return BadRequest(NewReturnMessage("Please confirm your vote. You can NOT change it once you have confirmed."));
+
+            VoterToken voter = new()
+            {
+                VoterId = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString(),
+                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString())
+            };
+
+            VoteToken vote = new()
+            {
+                CandidateId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("candidate")).Value.ToString()),
+                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString())
+            };
+
+            //Console.WriteLine();
+
+            //IAsyncQldbDriver driver = AsyncQldbDriver.Builder().WithLedger(appSettings.Value.Vote.LedgerID).Build();
+            IAsyncQldbDriver driver = AsyncQldbDriver.Builder()
+                .WithLedger(appSettings.Value.Vote.LedgerID)
+                .WithSerializer(new ObjectSerializer())
+                .Build();
+
+            //IAsyncResult<VoterToken> voterCheck = await driver.Execute(async txn =>
+            //{
+            //    //string query = "SELECT * FROM voters WHERE VoterId = " + voter.VoterId;
+            //    return await txn.Execute(txn.Query<VoterToken>(query));
+            //});
+
+            //Console.WriteLine();
+
+            var result = await driver.Execute(async txn =>
+            {
+                IQuery<VoterToken> voterQuery = txn.Query<VoterToken>("INSERT INTO Voters ?", voter);
+                IQuery<VoteToken> voteQuery = txn.Query<VoteToken>("INSERT INTO Ballots ?", vote);
+                await txn.Execute(voterQuery);
+                await txn.Execute(voteQuery);
+                return true;
+            });
+
+            Console.WriteLine();
 
             return Ok();
         }
@@ -236,12 +355,13 @@ namespace SmartVotingAPI.Controllers.Application
             return null;
         }
 
-        private string CreateToken(VoterToken voter)
+        private string CreateVoterToken(VoterToken voter)
         {
             List<Claim> claims = new List<Claim>
             {
                 new Claim("voter", voter.VoterId),
                 new Claim("riding", voter.RidingId.ToString()),
+                new Claim("election", appSettings.Value.Vote.ElectionID.ToString()),
                 new Claim(ClaimTypes.Role, "Voter")
             };
 
@@ -250,10 +370,39 @@ namespace SmartVotingAPI.Controllers.Application
             var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var token = new JwtSecurityToken(
-                issuer: "api.smartvoting.cc",
+                issuer: tokenIssuer,
                 claims: claims,
                 expires: DateTime.Now.AddDays(14),
                 //expires: DateTime.Now.AddMinutes(15),
+                signingCredentials: cred
+            );
+
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return jwt;
+        }
+
+        private string CreateVoteToken(VoterToken voter, VoteToken vote)
+        {
+            List<Claim> claims = new List<Claim>
+            {
+                new Claim("voter", voter.VoterId),
+                new Claim("candidate", vote.CandidateId.ToString()),
+                new Claim("riding", vote.RidingId.ToString()),
+                new Claim("election", appSettings.Value.Vote.ElectionID.ToString()),
+                new Claim("timestamp", DateTime.Now.ToString()),
+                new Claim(ClaimTypes.Role, "Voter")
+            };
+
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Value.Vote.TokenSignature));
+
+            var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+
+            var token = new JwtSecurityToken(
+                issuer: tokenIssuer,
+                claims: claims,
+                expires: DateTime.Now.AddDays(14),
+                //expires: DateTime.Now.AddMinutes(10),
                 signingCredentials: cred
             );
 

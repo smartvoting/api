@@ -57,7 +57,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 AWSOptions awsOptions = new AWSOptions
 {
-    Credentials = new BasicAWSCredentials(builder.Configuration.GetSection("AccessKeys").GetValue<string>("AWS:AccessID"), builder.Configuration.GetSection("AccessKeys").GetValue<string>("AWS:SecretKey")),
+    Credentials = new BasicAWSCredentials(builder.Configuration.GetSection("AppSettings").GetValue<string>("AmazonAWS:Username"), builder.Configuration.GetSection("AppSettings").GetValue<string>("AmazonAWS:Password")),
     Region = RegionEndpoint.USEast1
 };
 builder.Services.AddDefaultAWSOptions(awsOptions);

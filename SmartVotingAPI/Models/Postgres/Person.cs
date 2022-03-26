@@ -7,10 +7,9 @@ namespace SmartVotingAPI.Models.Postgres
     {
         public int PersonId { get; set; }
         public int RoleId { get; set; }
-        public Guid OfficeId { get; set; }
+        public int PartyId { get; set; }
         public int RidingId { get; set; }
         public Guid? SocialId { get; set; }
-        public int PartyId { get; set; }
         public string FirstName { get; set; } = null!;
         public string LastName { get; set; } = null!;
         public string EmailAddress { get; set; } = null!;

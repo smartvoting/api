@@ -15,6 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Amazon.QLDB.Driver" Version="1.3.0" />
+    <PackageReference Include="Amazon.QLDB.Driver.Serialization" Version="1.0.0" />
+    <PackageReference Include="AWSSDK.Core" Version="3.7.8.6" />
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.3.7" />
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.1" />
     <PackageReference Include="AWSSDK.QLDB" Version="3.7.3.23" />

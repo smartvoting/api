@@ -100,8 +100,8 @@ namespace SmartVotingAPI.Controllers
         protected async Task<bool> SendEmailSES(string recipient, string template, string data)
         {
             string sender = "noreply@mail.smartvoting.cc";
-            string username = appSettings.Value.AmazonSES.Username;
-            string password = appSettings.Value.AmazonSES.Password;
+            string username = appSettings.Value.AmazonAWS.Username;
+            string password = appSettings.Value.AmazonAWS.Password;
             var emailClient = new AmazonSimpleEmailServiceClient(new BasicAWSCredentials(username, password), RegionEndpoint.USEast1);
 
             var request = new SendTemplatedEmailRequest

@@ -117,39 +117,76 @@ namespace SmartVotingAPI.Controllers.Application
             var candidates = await postgres.People
                 .Where(p => p.PartyId == partyId && p.RoleId == 5)
                 .Join(postgres.SocialMediaLists, p => p.SocialId, s => s.SocialId, (p, s) => new { p, s })
-                .Join(postgres.OfficeLists, ps => ps.p.OfficeId, o => o.OfficeId, (ps, o) => new { ps, o })
-                .Join(postgres.OfficeTypes, pso => pso.o.TypeId, t => t.TypeId, (pso, t) => new { pso, t })
-                .Join(postgres.ProvinceLists, psot => psot.pso.o.ProvinceId, n => n.ProvinceId, (psot, n) => new { psot, n })
+                .Join(postgres.RidingLists, ps => ps.p.RidingId, r => r.RidingId, (ps, r) => new { ps, r })
+                .Join(postgres.OfficeLists, psr => psr.r.OfficeId, o => o.OfficeId, (psr, o) => new { psr, o })
+                .Join(postgres.OfficeTypes, psro => psro.o.TypeId, t => t.TypeId, (psro, t) => new { psro, t })
+                .Join(postgres.ProvinceLists, psrot => psrot.psro.o.ProvinceId, l => l.ProvinceId, (psrot, l) => new { psrot, l })
                 .Select(x => new Models.DTO.Person
                 {
-                    FirstName = x.psot.pso.ps.p.FirstName,
-                    LastName = x.psot.pso.ps.p.LastName,
-                    EmailAddress = x.psot.pso.ps.p.EmailAddress,
-                    PhoneNumber = x.psot.pso.ps.p.PhoneNumber,
+                    FirstName = x.psrot.psro.psr.ps.p.FirstName,
+                    LastName = x.psrot.psro.psr.ps.p.LastName,
+                    EmailAddress = x.psrot.psro.psr.ps.p.EmailAddress,
+                    PhoneNumber = x.psrot.psro.psr.ps.p.PhoneNumber,
                     Office = new Office
                     {
-                        Type = x.psot.t.TypeName,
-                        StreetNumber = x.psot.pso.o.StreetNumber,
-                        StreetName = x.psot.pso.o.StreetName,
-                        UnitNumber = x.psot.pso.o.UnitNumber,
-                        City = x.psot.pso.o.City,
-                        Province = x.n.ProvinceName,
-                        PostCode = x.psot.pso.o.PostCode,
-                        PoBox = x.psot.pso.o.PoBox,
-                        IsPublic = x.psot.pso.o.IsPublic
+                        Type = x.psrot.t.TypeName,
+                        StreetNumber = x.psrot.psro.o.StreetNumber,
+                        StreetName = x.psrot.psro.o.StreetName,
+                        UnitNumber = x.psrot.psro.o.UnitNumber,
+                        City = x.psrot.psro.o.City,
+                        Province = x.l.ProvinceName,
+                        PoBox = x.psrot.psro.o.PoBox,
+                        IsPublic = x.psrot.psro.o.IsPublic
                     },
                     SocialMedia = new SocialMedia
                     {
-                        TwitterId = x.psot.pso.ps.s.TwitterId,
-                        InstagramId = x.psot.pso.ps.s.InstagramId,
-                        FacebookId = x.psot.pso.ps.s.FacebookId,
-                        YoutubeId = x.psot.pso.ps.s.YoutubeId,
-                        SnapchatId = x.psot.pso.ps.s.SnapchatId,
-                        FlickrId = x.psot.pso.ps.s.FlickrId,
-                        TiktokId = x.psot.pso.ps.s.TiktokId
+                        TwitterId = x.psrot.psro.psr.ps.s.TwitterId,
+                        InstagramId = x.psrot.psro.psr.ps.s.InstagramId,
+                        FacebookId = x.psrot.psro.psr.ps.s.FacebookId,
+                        YoutubeId = x.psrot.psro.psr.ps.s.YoutubeId,
+                        SnapchatId = x.psrot.psro.psr.ps.s.SnapchatId,
+                        FlickrId = x.psrot.psro.psr.ps.s.FlickrId,
+                        TiktokId = x.psrot.psro.psr.ps.s.TiktokId
                     }
                 })
                 .ToArrayAsync();
+
+            //var candidates = await postgres.People
+            //    .Where(p => p.PartyId == partyId && p.RoleId == 5)
+            //    .Join(postgres.SocialMediaLists, p => p.SocialId, s => s.SocialId, (p, s) => new { p, s })
+            //    .Join(postgres.OfficeLists, ps => ps.p.OfficeId, o => o.OfficeId, (ps, o) => new { ps, o })
+            //    .Join(postgres.OfficeTypes, pso => pso.o.TypeId, t => t.TypeId, (pso, t) => new { pso, t })
+            //    .Join(postgres.ProvinceLists, psot => psot.pso.o.ProvinceId, n => n.ProvinceId, (psot, n) => new { psot, n })
+            //    .Select(x => new Models.DTO.Person
+            //    {
+            //        FirstName = x.psot.pso.ps.p.FirstName,
+            //        LastName = x.psot.pso.ps.p.LastName,
+            //        EmailAddress = x.psot.pso.ps.p.EmailAddress,
+            //        PhoneNumber = x.psot.pso.ps.p.PhoneNumber,
+            //        Office = new Office
+            //        {
+            //            Type = x.psot.t.TypeName,
+            //            StreetNumber = x.psot.pso.o.StreetNumber,
+            //            StreetName = x.psot.pso.o.StreetName,
+            //            UnitNumber = x.psot.pso.o.UnitNumber,
+            //            City = x.psot.pso.o.City,
+            //            Province = x.n.ProvinceName,
+            //            PostCode = x.psot.pso.o.PostCode,
+            //            PoBox = x.psot.pso.o.PoBox,
+            //            IsPublic = x.psot.pso.o.IsPublic
+            //        },
+            //        SocialMedia = new SocialMedia
+            //        {
+            //            TwitterId = x.psot.pso.ps.s.TwitterId,
+            //            InstagramId = x.psot.pso.ps.s.InstagramId,
+            //            FacebookId = x.psot.pso.ps.s.FacebookId,
+            //            YoutubeId = x.psot.pso.ps.s.YoutubeId,
+            //            SnapchatId = x.psot.pso.ps.s.SnapchatId,
+            //            FlickrId = x.psot.pso.ps.s.FlickrId,
+            //            TiktokId = x.psot.pso.ps.s.TiktokId
+            //        }
+            //    })
+            //    .ToArrayAsync();
 
             party.Candidates = candidates;
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 
 namespace SmartVotingAPI.Models.Postgres
 {
@@ -15,11 +14,12 @@ namespace SmartVotingAPI.Models.Postgres
         public int Gender { get; set; }
         public int StreetNumber { get; set; }
         public string StreetName { get; set; } = null!;
-        public string UnitNumber { get; set; } = null!;
+        public string? UnitNumber { get; set; }
         public string City { get; set; } = null!;
         public int ProvinceId { get; set; }
         public string PostCode { get; set; } = null!;
         public string EmailAddress { get; set; } = null!;
         public string PhoneNumber { get; set; } = null!;
+        public bool VoteCast { get; set; }
     }
 }
