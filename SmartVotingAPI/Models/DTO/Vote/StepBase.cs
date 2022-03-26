@@ -5,7 +5,7 @@ namespace SmartVotingAPI.Models.DTO.Vote
     public class StepBase
     {
         [Required]
-        public string ApiKey { get; set; }
+        public string AuthKey { get; set; }
 
         [Required]
         public string RemoteIp { get; set; }

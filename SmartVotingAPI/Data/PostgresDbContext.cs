@@ -18,6 +18,7 @@ namespace SmartVotingAPI.Data
         }
 
         public virtual DbSet<ApiKey> ApiKeys { get; set; } = null!;
+        public virtual DbSet<FutureElection> FutureElections { get; set; } = null!;
         public virtual DbSet<OfficeList> OfficeLists { get; set; } = null!;
         public virtual DbSet<OfficeType> OfficeTypes { get; set; } = null!;
         public virtual DbSet<PartyList> PartyLists { get; set; } = null!;
@@ -87,6 +88,32 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.KeyTtl)
                     .HasColumnName("key_ttl")
                     .HasDefaultValueSql("3");
+            });
+
+            modelBuilder.Entity<FutureElection>(entity =>
+            {
+                entity.HasKey(e => e.ElectionId)
+                    .HasName("future_elections_pk");
+
+                entity.ToTable("future_elections");
+
+                entity.HasIndex(e => e.AuthKey, "future_elections_api_key_uindex")
+                    .IsUnique();
+
+                entity.HasIndex(e => e.ElectionDate, "future_elections_election_date_uindex")
+                    .IsUnique();
+
+                entity.Property(e => e.ElectionId)
+                    .HasColumnName("election_id")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.AuthKey).HasColumnName("auth_key");
+
+                entity.Property(e => e.ElectionDate).HasColumnName("election_date");
+
+                entity.Property(e => e.EndTime).HasColumnName("end_time");
+
+                entity.Property(e => e.StartTime).HasColumnName("start_time");
             });
 
             modelBuilder.Entity<OfficeList>(entity =>
@@ -329,9 +356,7 @@ namespace SmartVotingAPI.Data
                     .HasMaxLength(32)
                     .HasColumnName("last_name");
 
-                entity.Property(e => e.PartyId)
-                    .HasColumnName("party_id")
-                    .HasDefaultValueSql("0");
+                entity.Property(e => e.PartyId).HasColumnName("party_id");
 
                 entity.Property(e => e.PhoneNumber)
                     .HasColumnType("character varying")

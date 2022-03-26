@@ -8,12 +8,12 @@ namespace SmartVotingAPI.Models.DTO.Vote
         public bool IsCitizen { get; set; }
 
         [Required]
-        public string FirstName { get; set; }
+        public string FirstName { get; set; } = null!;
 
-        public string MiddleName { get; set; }
+        public string? MiddleName { get; set; }
 
         [Required]
-        public string LastName { get; set; }
+        public string LastName { get; set; } = null!;
 
         [Required]
         public DateTime BirthDate { get; set; }
@@ -26,12 +26,12 @@ namespace SmartVotingAPI.Models.DTO.Vote
         public int StreetNumber { get; set; }
 
         [Required]
-        public string StreetName { get; set; }
+        public string StreetName { get; set; } = null!;
 
         public string? UnitNumber { get; set; }
 
         [Required]
-        public string City { get; set; }
+        public string City { get; set; } = null!;
 
         [Required]
         [Range(1, 13)]
@@ -39,6 +39,6 @@ namespace SmartVotingAPI.Models.DTO.Vote
 
         [Required]
         [StringLength(7)]
-        public string PostCode { get; set; }
+        public string PostCode { get; set; } = null!;
     }
 }

@@ -35,34 +35,58 @@ namespace SmartVotingAPI.Controllers.Application
         [AllowAnonymous]
         public async Task<IActionResult> StepOne(StepOne data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
+            string? message = await SecurityChecks(data.RemoteIp, data.AuthKey, false);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            var voter = await postgres.VoterLists
+            var election = await postgres.FutureElections
+                .Where(a => a.AuthKey.Equals(Guid.Parse(data.AuthKey)))
+                .FirstOrDefaultAsync();
+
+            DateTime timestamp = DateTime.Now;
+
+            bool isActiveElection = TimeOnly.FromDateTime(timestamp) > election.StartTime && TimeOnly.FromDateTime(timestamp) < election.EndTime && DateOnly.FromDateTime(timestamp).Equals(election.ElectionDate);
+
+            if (!isActiveElection)
+                return Unauthorized(NewReturnMessage("Election is not active. Try again later."));
+
+            if (!data.IsCitizen)
+                return Unauthorized(NewReturnMessage("Only Canadian Citizens are allowed to use this system to vote for Canadian government elections."));
+
+            var voterEntry = await postgres.VoterLists
                 .Where(a => a.FirstName.Equals(data.FirstName))
-                //.Where(a => a.MiddleName.Equals(data.MiddleName))
                 .Where(a => a.LastName.Equals(data.LastName))
-                //.Where(a => Equals(a.BirthDate, data.BirthDate))
+                .Where(a => a.BirthDate.CompareTo(data.BirthDate) == 0)
                 .Where(a => a.Gender == data.Gender)
                 .Where(a => a.StreetNumber == data.StreetNumber)
                 .Where(a => a.StreetName.Equals(data.StreetName))
-                //.Where(a => a.UnitNumber == data.UnitNumber)
                 .Where(a => a.City.Equals(data.City))
                 .Where(a => a.ProvinceId == data.Province)
                 .Where(a => a.PostCode.Equals(data.PostCode))
-                .Where(a => !a.VoteCast)
-                .Select(a => new VoterToken
-                {
-                    VoterId = a.VoterId.ToString(),
-                    RidingId = a.RidingId
-                })
                 .FirstOrDefaultAsync();
 
-            if (voter == null)
+            if (voterEntry == null)
                 return BadRequest(NewReturnMessage("No voter found with the provided information."));
 
-            string token = CreateVoterToken(voter);
+            if (voterEntry.VoteCast)
+                return Unauthorized(NewReturnMessage("A vote has already been submitted & recorded for this election."));
+
+            bool verifiedMiddleName = false;
+            bool verifiedUnitNumber = false;
+
+            if (voterEntry.MiddleName != null && data.MiddleName != null)
+                verifiedMiddleName = voterEntry.MiddleName.Equals(data.MiddleName);
+
+            if (voterEntry.UnitNumber != null || data.UnitNumber != null)
+                verifiedUnitNumber = voterEntry.UnitNumber.Equals(data.UnitNumber);
+
+            VoterToken voter = new()
+            {
+                VoterId = voterEntry.VoterId.ToString(),
+                RidingId = voterEntry.RidingId
+            };
+
+            string token = CreateToken(voter);
 
             return Ok(token);
         }
@@ -73,18 +97,11 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Step/2")]
         public async Task<IActionResult> StepTwo(StepTwo data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
-            if (message != null)
-                return Unauthorized(NewReturnMessage(message));
-
             Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
 
-            //var security = await postgres.VoterSecurities
-            //    .Where(a => a.VoterId.Equals(voterClaim))
-            //    .Where(a => a.CardId.Equals(data.CardId))
-            //    .Where(a => a.CardPin == data.CardPin)
-            //    .Where(a => a.Sin == data.SinDigits)
-            //    .FirstOrDefaultAsync();
+            string? message = await SecurityChecks(data.RemoteIp, data.AuthKey, true, voterClaim);
+            if (message != null)
+                return Unauthorized(NewReturnMessage(message));
 
             var security = await postgres.VoterSecurities
                 .Where(a => a.VoterId.Equals(voterClaim))
@@ -102,7 +119,7 @@ namespace SmartVotingAPI.Controllers.Application
             bool validRequest = security.CardId.Equals(data.CardId) && security.CardPin.Equals(data.CardPin) && security.Sin.Equals(data.SinDigits);
 
             if (!validRequest)
-                return BadRequest(NewReturnMessage("No voter found with the provided information."));
+                return BadRequest(NewReturnMessage("One or more of the pieces of information provided do not match our records."));
 
             return Ok();
         }
@@ -113,11 +130,11 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Step/3")]
         public async Task<IActionResult> StepThree(StepThree data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
+
+            string? message = await SecurityChecks(data.RemoteIp, data.AuthKey, true, voterClaim);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
-
-            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
 
             var tax = await postgres.VoterSecurities
                 .Where(a => a.VoterId.Equals(voterClaim))
@@ -141,7 +158,7 @@ namespace SmartVotingAPI.Controllers.Application
             bool lineThree = tax[data.LineThree.LineNumber] == data.LineThree.LineValue;
 
             if (!lineOne || !lineTwo || !lineThree)
-                return BadRequest(NewReturnMessage("Tax information did not match records."));
+                return BadRequest(NewReturnMessage("Tax information provided does not match our records."));
 
             Random random = new Random();
             int pin = random.Next(10000000, 100000000);
@@ -175,12 +192,10 @@ namespace SmartVotingAPI.Controllers.Application
 
             //bool emailSent = await SendEmailSES(email, "Voter Authentication PIN", body);
 
-            if (emailSent)
-                return Ok();
+            if (!emailSent)
+                return BadRequest(NewReturnMessage("Error sending authentication pin."));
 
-            return BadRequest(NewReturnMessage("Error sending authentication pin."));
-
-
+            return Ok();
         }
         #endregion
 
@@ -189,11 +204,12 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Step/4")]
         public async Task<ActionResult<IEnumerable<Candidate>>> StepFour(StepFour data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
+
+            string? message = await SecurityChecks(data.RemoteIp, data.AuthKey, true, voterClaim);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
             int ridingClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
             const int candidateRoleId = 5;
 
@@ -236,16 +252,17 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Step/5")]
         public async Task<IActionResult> StepFive(StepFive data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
+            Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
+
+            string? message = await SecurityChecks(data.RemoteIp, data.AuthKey, true, voterClaim);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
-            string voterClaim = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
             int ridingClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
 
             VoterToken voter = new()
             {
-                VoterId = voterClaim,
+                VoterId = voterClaim.ToString(),
                 RidingId = ridingClaim
             };
 
@@ -255,7 +272,7 @@ namespace SmartVotingAPI.Controllers.Application
                 CandidateId = data.CandidateId
             };
 
-            string token = CreateVoteToken(voter, vote);
+            string token = CreateToken(voter, vote);
 
             return Ok(token);
         }
@@ -266,59 +283,63 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Step/6")]
         public async Task<IActionResult> StepSix(StepSix data)
         {
-            string message = await SecurityChecks(data.RemoteIp, data.ApiKey);
+            string voterId = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
+            string message = await SecurityChecks(data.RemoteIp, data.AuthKey, false);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
-
 
             if (!data.UserConfirmation)
                 return BadRequest(NewReturnMessage("Please confirm your vote. You can NOT change it once you have confirmed."));
 
-            VoterToken voter = new()
-            {
-                VoterId = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString(),
-                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString())
-            };
-
-            VoteToken vote = new()
-            {
-                CandidateId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("candidate")).Value.ToString()),
-                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString())
-            };
-
-            //Console.WriteLine();
-
-            //IAsyncQldbDriver driver = AsyncQldbDriver.Builder().WithLedger(appSettings.Value.Vote.LedgerID).Build();
             IAsyncQldbDriver driver = AsyncQldbDriver.Builder()
                 .WithLedger(appSettings.Value.Vote.LedgerID)
                 .WithSerializer(new ObjectSerializer())
                 .Build();
 
-            //IAsyncResult<VoterToken> voterCheck = await driver.Execute(async txn =>
-            //{
-            //    //string query = "SELECT * FROM voters WHERE VoterId = " + voter.VoterId;
-            //    return await txn.Execute(txn.Query<VoterToken>(query));
-            //});
+            var readResult = await driver.Execute(async txn =>
+            {
+                IQuery<VoterToken> query = txn.Query<VoterToken>("SELECT * FROM Voters WHERE VoterId = ?", voterId);
+                return await txn.Execute(query);
+            });
 
-            //Console.WriteLine();
+            if (readResult != null)
+                return Unauthorized(NewReturnMessage("A vote has already been recorded by this voter. The vote will not be saved or changed."));
 
-            var result = await driver.Execute(async txn =>
+            DateTime timestamp = DateTime.Now;
+
+            VoterToken voter = new()
+            {
+                VoterId = voterId,
+                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString()),
+                Timestamp = timestamp
+            };
+
+            VoteToken vote = new()
+            {
+                CandidateId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("candidate")).Value.ToString()),
+                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString()),
+                Timestamp = timestamp
+            };
+
+            await driver.Execute(async txn =>
             {
                 IQuery<VoterToken> voterQuery = txn.Query<VoterToken>("INSERT INTO Voters ?", voter);
                 IQuery<VoteToken> voteQuery = txn.Query<VoteToken>("INSERT INTO Ballots ?", vote);
                 await txn.Execute(voterQuery);
                 await txn.Execute(voteQuery);
-                return true;
             });
 
-            Console.WriteLine();
+            var voterEntry = await postgres.VoterLists.FindAsync(Guid.Parse(voter.VoterId));
+            voterEntry.VoteCast = true;
+            postgres.VoterLists.Update(voterEntry);
+            await postgres.SaveChangesAsync();
 
             return Ok();
         }
         #endregion
 
         #region Helper Methods
-        private async Task<string> SecurityChecks(string ip, string key)
+        private async Task<string?> SecurityChecks(string ip, string key, bool checkVoterId, Guid? voterId = null)
         {
             IPAddress address;
             bool isValidIP = IPAddress.TryParse(ip, out address);
@@ -352,10 +373,14 @@ namespace SmartVotingAPI.Controllers.Application
             if ((appSettings.Value.Environment.Equals("development") && apiResult.IsDevelopment) || (appSettings.Value.Environment.Equals("production") && apiResult.IsProduction))
                     return "Invalid API Key Provided.";
 
+            if (checkVoterId)
+                if (voterId == null || voterId == Guid.Empty)
+                    return "No Voter ID found in the session. Please restart the voting process.";
+
             return null;
         }
 
-        private string CreateVoterToken(VoterToken voter)
+        private string CreateToken(VoterToken voter)
         {
             List<Claim> claims = new List<Claim>
             {
@@ -382,7 +407,7 @@ namespace SmartVotingAPI.Controllers.Application
             return jwt;
         }
 
-        private string CreateVoteToken(VoterToken voter, VoteToken vote)
+        private string CreateToken(VoterToken voter, VoteToken vote)
         {
             List<Claim> claims = new List<Claim>
             {
