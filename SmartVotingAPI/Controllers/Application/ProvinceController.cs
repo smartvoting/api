@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
-using SmartVotingAPI.Models.ReactObjects;
+using SmartVotingAPI.Models.DTO;
 
 namespace SmartVotingAPI.Controllers.Application
 {

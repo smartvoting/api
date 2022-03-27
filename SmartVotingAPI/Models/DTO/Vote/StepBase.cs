@@ -1,11 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.Vote
+namespace SmartVotingAPI.Models.DTO.Vote
 {
     public class StepBase
     {
         [Required]
-        public string Token { get; set; }
+        public string AuthKey { get; set; }
 
         [Required]
         public string RemoteIp { get; set; }

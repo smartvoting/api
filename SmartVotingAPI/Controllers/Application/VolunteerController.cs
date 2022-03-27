@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.Postgres;
-using SmartVotingAPI.Models.ReactObjects;
+using SmartVotingAPI.Models.DTO;
 using System.Text.Json.Nodes;
 
 namespace SmartVotingAPI.Controllers.Application
@@ -16,7 +16,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPost]
         [Route("Apply")]
-        public async Task<IActionResult> PostApply(Models.ReactObjects.VolunteerApplication application)
+        public async Task<IActionResult> PostApply(Models.DTO.VolunteerApplication application)
         {
             if (application.PartyId <= 0 || application.RidingId <= 0 || String.IsNullOrEmpty(application.FirstName) || String.IsNullOrEmpty(application.LastName) || String.IsNullOrEmpty(application.PhoneNumber) || String.IsNullOrEmpty(application.EmailAddress))
                 return BadRequest();

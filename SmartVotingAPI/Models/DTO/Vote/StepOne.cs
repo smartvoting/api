@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SmartVotingAPI.Models.Vote
+namespace SmartVotingAPI.Models.DTO.Vote
 {
     public class StepOne : StepBase
     {
@@ -8,15 +8,12 @@ namespace SmartVotingAPI.Models.Vote
         public bool IsCitizen { get; set; }
 
         [Required]
-        public bool IsLegalAge { get; set; }
+        public string FirstName { get; set; } = null!;
+
+        public string? MiddleName { get; set; }
 
         [Required]
-        public string FirstName { get; set; }
-
-        public string MiddleName { get; set; }
-
-        [Required]
-        public string LastName { get; set; }
+        public string LastName { get; set; } = null!;
 
         [Required]
         public DateTime BirthDate { get; set; }
@@ -29,12 +26,12 @@ namespace SmartVotingAPI.Models.Vote
         public int StreetNumber { get; set; }
 
         [Required]
-        public string StreetName { get; set; }
+        public string StreetName { get; set; } = null!;
 
         public string? UnitNumber { get; set; }
 
         [Required]
-        public string City { get; set; }
+        public string City { get; set; } = null!;
 
         [Required]
         [Range(1, 13)]
@@ -42,6 +39,6 @@ namespace SmartVotingAPI.Models.Vote
 
         [Required]
         [StringLength(7)]
-        public string PostCode { get; set; }
+        public string PostCode { get; set; } = null!;
     }
 }
