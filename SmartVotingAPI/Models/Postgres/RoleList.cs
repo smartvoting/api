@@ -8,5 +8,6 @@ namespace SmartVotingAPI.Models.Postgres
         public int RoleId { get; set; }
         public string RoleTitle { get; set; } = null!;
         public string RoleGroup { get; set; } = null!;
+        public string RoleCode { get; set; } = null!;
     }
 }

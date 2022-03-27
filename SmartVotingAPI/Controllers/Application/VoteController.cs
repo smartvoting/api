@@ -20,11 +20,9 @@ namespace SmartVotingAPI.Controllers.Application
     [ApiVersion("1")]
     [Route("v1/Vote")]
     [ApiController]
-    //[Authorize]
     [Authorize(Roles = "Voter")]
     public class VoteController : BaseController
     {
-        private const string tokenIssuer = "api.smartvoting.cc";
         private static HttpClient client = new HttpClient();
 
         public VoteController(PostgresDbContext _context, IOptions<AppSettings> _app) : base(_context, _app) { }

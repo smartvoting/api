@@ -11,6 +11,8 @@ using Microsoft.Extensions.Options;
 using SmartVotingAPI.Data;
 using System.Net;
 using System.Net.Mail;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 
 namespace SmartVotingAPI.Controllers
@@ -19,6 +21,7 @@ namespace SmartVotingAPI.Controllers
     [ApiController]
     public class BaseController : ControllerBase
     {
+        protected const string tokenIssuer = "api.smartvoting.cc";
         protected readonly IOptions<AppSettings> appSettings;
         protected readonly PostgresDbContext postgres;
         protected readonly IDynamoDBContext dynamo;
@@ -76,6 +79,20 @@ namespace SmartVotingAPI.Controllers
                 return String.Format("{0}{1}/shape", baseUrl, ridingId.ToString(), "shape");
 
             return String.Format("{0}{1}", baseUrl, ridingId.ToString());
+        }
+
+        protected string GetTextHash(string text)
+        {
+            byte[] temp = null;
+
+            using (HashAlgorithm algorithm = SHA256.Create())
+                temp = algorithm.ComputeHash(Encoding.UTF8.GetBytes(text));
+
+            StringBuilder sb = new();
+            foreach (byte b in temp)
+                sb.Append(b.ToString("X2"));
+
+            return sb.ToString();
         }
 
         protected async Task<bool> VerifyHcaptcha(string token, string remoteIp)

@@ -365,7 +365,7 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.PwdHash)
                     .HasColumnType("character varying")
                     .HasColumnName("pwd_hash")
-                    .HasDefaultValueSql("'smartvoting'::character varying");
+                    .HasDefaultValueSql("'E48EC0B9FD8FCF305CA1090E7A916AD5F8C1497A5F609B438D308CCB909A2384'::character varying");
 
                 entity.Property(e => e.RidingId)
                     .HasColumnName("riding_id")
@@ -464,6 +464,9 @@ namespace SmartVotingAPI.Data
 
                 entity.ToTable("role_list");
 
+                entity.HasIndex(e => e.RoleCode, "role_list_role_code_uindex")
+                    .IsUnique();
+
                 entity.HasIndex(e => e.RoleId, "role_list_role_id_uindex")
                     .IsUnique();
 
@@ -472,8 +475,12 @@ namespace SmartVotingAPI.Data
 
                 entity.Property(e => e.RoleId).HasColumnName("role_id");
 
+                entity.Property(e => e.RoleCode)
+                    .HasMaxLength(2)
+                    .HasColumnName("role_code");
+
                 entity.Property(e => e.RoleGroup)
-                    .HasColumnType("character varying")
+                    .HasMaxLength(2)
                     .HasColumnName("role_group");
 
                 entity.Property(e => e.RoleTitle)
