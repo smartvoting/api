@@ -89,7 +89,8 @@ namespace SmartVotingAPI.Controllers.Application
                 return BadRequest(new { message = "A city is required." });
 
             // rold_id for candidates = 5
-
+            // Get GPS coordinates
+            string mapquestCall = GetMapquestCall(city);
 
             return Ok();
         }

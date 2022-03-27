@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
 using System.Net;
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace SmartVotingAPI.Controllers
@@ -100,17 +102,25 @@ namespace SmartVotingAPI.Controllers
             string baseUrl = "https://hcaptcha.com/siteverify";
             List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
             {
-                new KeyValuePair<string, string>("secret", appSettings.Value.API.HcaptchaSecret),
-                new KeyValuePair<string, string>("response", token),
+                //new KeyValuePair<string, string>("secret", appSettings.Value.API.HcaptchaSecret),
+                //new KeyValuePair<string, string>("response", token),
+                new KeyValuePair<string, string>("secret", "0x0000000000000000000000000000000000000000"),
+                new KeyValuePair<string, string>("response", "10000000-aaaa-bbbb-cccc-000000000001"),
                 new KeyValuePair<string, string>("remoteip", remoteIp)
             };
+
             HttpResponseMessage response = await client.PostAsync(baseUrl, new FormUrlEncodedContent(postData));
 
             if (response.IsSuccessStatusCode)
             {
                 string responseBody = await response.Content.ReadAsStringAsync();
-                Console.WriteLine(responseBody);
+                JsonDocument json = JsonDocument.Parse(responseBody);
+                JsonElement element = json.RootElement;
+                bool status = bool.Parse(element.GetProperty("success").ToString());
+                Console.WriteLine(status);
+                return status;
             }
+
             return false;
         }
 
@@ -184,5 +194,14 @@ namespace SmartVotingAPI.Controllers
 
             return true;
         }
+
+        #region Security Tokens
+        protected SigningCredentials GetSigningCredentials()
+        {
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Value.TokenSignature));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            return credentials;
+        }
+        #endregion
     }
 }

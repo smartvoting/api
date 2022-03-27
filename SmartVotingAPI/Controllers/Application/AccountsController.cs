@@ -3,8 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.DTO;
+using SmartVotingAPI.Models.DTO.Account;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace SmartVotingAPI.Controllers.Application
@@ -18,7 +21,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPost]
         [Route("SignIn")]
-        public async Task<IActionResult> SignIn(Account data)
+        public async Task<IActionResult> SignIn(SignIn data)
         {
             string pwd_hash = GetTextHash(data.Password);
 
@@ -30,36 +33,102 @@ namespace SmartVotingAPI.Controllers.Application
             if (person == null)
                 return BadRequest(NewReturnMessage("No user found with the provided ID and password."));
 
+            if (!person.AccountActive)
+                return BadRequest(NewReturnMessage("This user account has been disabled. Contact the system administrator for help."));
+
             var role = await postgres.RoleLists.FindAsync(person.RoleId);
 
-            return Ok();
+            UserToken user = new()
+            {
+                UserId = person.PersonId,
+                RoleType = role.RoleCode,
+                RoleGroup = role.RoleGroup
+            };
+
+            string token = CreateToken(user);
+
+            return Ok(token);
         }
 
         [HttpPut]
         [Route("UpdatePassword")]
         [Authorize(Roles = "EO, PS, LR")]
-        public async Task<IActionResult> UpdatePassword(Account data)
+        public async Task<IActionResult> UpdatePassword(ChangePassword data)
         {
             if (!data.Password.Equals(data.ConfirmPassword))
                 return BadRequest(NewReturnMessage("Both passwords must match in order to change your password."));
 
+            int userClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals(ClaimTypes.UserData)).Value);
+
+            if (userClaim <= 0)
+                return BadRequest(NewReturnMessage("Invalid user account number."));
+
             string pwd_hash = GetTextHash(data.Password);
 
-            var person = await postgres.People.FindAsync(data.UserId);
+            var person = await postgres.People.FindAsync(userClaim);
+
+            if (person.PwdHash.Equals(pwd_hash))
+                return BadRequest(NewReturnMessage("Your new password must be different than your current one."));
+
             person.PwdHash = pwd_hash;
             postgres.People.Update(person);
-            await postgres.SaveChangesAsync();
+            var result = await postgres.SaveChangesAsync();
 
-            return Ok(NewReturnMessage("Password Updated."));
+            if (result != 1)
+                return BadRequest(NewReturnMessage("Failed to update password."));
+
+            return Accepted(NewReturnMessage("Password Updated."));
         }
 
-        //private string CreateToken(Account account)
-        //{
-        //    List<Claim> claims = new()
-        //    {
-        //        new Claim(ClaimTypes.GroupSid = account.RoleGroup.ToString()),
-        //        new Claim(ClaimTypes.Role = account.RoleType.ToString())
-        //    };
-        //}
+        [HttpDelete]
+        [Route("DisableAccount")]
+        [Authorize(Roles = "EO, PS, LR")]
+        public async Task<IActionResult> DisableAccount(int userId)
+        {
+            if (userId <= 0)
+                return BadRequest(NewReturnMessage("User ID number provided is invalid."));
+
+            int userClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals(ClaimTypes.UserData)).Value);
+
+            if (userClaim == userId)
+                return BadRequest(NewReturnMessage("You can not disable your own account."));
+
+            var person = await postgres.People.FindAsync(userId);
+
+            if (person == null)
+                return BadRequest(NewReturnMessage("No user found for the provided account number."));
+
+            person.AccountActive = false;
+            postgres.People.Update(person);
+            var result = await postgres.SaveChangesAsync();
+
+            if (result != 1)
+                return BadRequest(NewReturnMessage("Failed to disable the user account."));
+
+            return Ok(NewReturnMessage("User account disabled."));
+        }
+
+        private string CreateToken(UserToken user)
+        {
+            List<Claim> claims = new()
+            {
+                new Claim(ClaimTypes.Role, user.RoleGroup),
+                new Claim(ClaimTypes.Name, user.RoleType),
+                new Claim(ClaimTypes.UserData, user.UserId.ToString())
+            };
+
+            var credentials = GetSigningCredentials();
+
+            var token = new JwtSecurityToken(
+                issuer: tokenIssuer,
+                claims: claims,
+                expires: DateTime.Now.AddHours(24),
+                signingCredentials: credentials
+            );
+
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return jwt;
+        }
     }
 }

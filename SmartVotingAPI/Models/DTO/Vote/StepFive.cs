@@ -9,5 +9,8 @@ namespace SmartVotingAPI.Models.DTO.Vote
 
         [Required]
         public int RidingId { get; set; }
+
+        [Required]
+        public string HcaptchaResponse { get; set; } = null!;
     }
 }

@@ -256,6 +256,11 @@ namespace SmartVotingAPI.Controllers.Application
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
 
+            bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
+
+            if (!response)
+                return BadRequest(NewReturnMessage("hCaptcha security check failed."));
+
             int ridingClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
 
             VoterToken voter = new()
@@ -285,6 +290,11 @@ namespace SmartVotingAPI.Controllers.Application
             string message = await SecurityChecks(data.RemoteIp, data.AuthKey, false);
             if (message != null)
                 return Unauthorized(NewReturnMessage(message));
+
+            bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
+
+            if (!response)
+                return BadRequest(NewReturnMessage("hCaptcha security check failed."));
 
             if (!data.UserConfirmation)
                 return BadRequest(NewReturnMessage("Please confirm your vote. You can NOT change it once you have confirmed."));
@@ -388,16 +398,14 @@ namespace SmartVotingAPI.Controllers.Application
                 new Claim(ClaimTypes.Role, "Voter")
             };
 
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Value.Vote.TokenSignature));
-
-            var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var credentials = GetSigningCredentials();
 
             var token = new JwtSecurityToken(
                 issuer: tokenIssuer,
                 claims: claims,
                 expires: DateTime.Now.AddDays(14),
                 //expires: DateTime.Now.AddMinutes(15),
-                signingCredentials: cred
+                signingCredentials: credentials
             );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
@@ -417,16 +425,14 @@ namespace SmartVotingAPI.Controllers.Application
                 new Claim(ClaimTypes.Role, "Voter")
             };
 
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(appSettings.Value.Vote.TokenSignature));
-
-            var cred = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var credentials = GetSigningCredentials();
 
             var token = new JwtSecurityToken(
                 issuer: tokenIssuer,
                 claims: claims,
                 expires: DateTime.Now.AddDays(14),
                 //expires: DateTime.Now.AddMinutes(10),
-                signingCredentials: cred
+                signingCredentials: credentials
             );
 
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
