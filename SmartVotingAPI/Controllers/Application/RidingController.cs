@@ -82,45 +82,150 @@ namespace SmartVotingAPI.Controllers.Application
         }
 
         [HttpGet]
-        [Route("Locate/{city}")]
+        [Route("Locate/City/{city}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByCity(string city)
         {
             if (String.IsNullOrEmpty(city))
-                return BadRequest(new { message = "A city is required." });
+                return BadRequest(NewReturnMessage("A city is required."));
 
-            // rold_id for candidates = 5
-            // Get GPS coordinates
-            string mapquestCall = GetMapquestCall(city);
+            var ridings = await postgres.OfficeLists
+                .Where(o => o.TypeId == 3)
+                .Where(o => o.City.ToLower().Equals(city.ToLower()))
+                .Join(postgres.RidingLists, o => o.OfficeId, r => r.OfficeId, (o, r) => new { o, r })
+                .Join(postgres.ProvinceLists, or => or.o.ProvinceId, p => p.ProvinceId, (or, p) => new { or, p })
+                .Select(x => new Riding
+                {
+                    Id = x.or.r.RidingId,
+                    Name = x.or.r.RidingName,
+                    Email = x.or.r.RidingEmail,
+                    Phone = x.or.r.RidingPhone,
+                    Fax = x.or.r.RidingFax,
+                    Office = new Office
+                    {
+                        StreetNumber = x.or.o.StreetNumber,
+                        StreetName = x.or.o.StreetName,
+                        UnitNumber = x.or.o.UnitNumber,
+                        City = x.or.o.City,
+                        Province = x.p.ProvinceName,
+                        PostCode = x.or.o.PostCode,
+                        IsPublic = x.or.o.IsPublic
+                    }
+                })
+                .OrderBy(z => z.Id)
+                .ToArrayAsync();
 
-            return Ok();
+            if (ridings == null)
+                return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
+
+            //foreach (Riding riding in ridings)
+            //{
+            //    Coordinates gps = await GetRidingCentroid(riding.Id);
+            //    if (gps != null)
+            //        riding.Centroid = gps;
+            //}
+
+            return Ok(ridings);
         }
 
         [HttpGet]
-        [Route("Locate/{candidateName}")]
+        [Route("Locate/Candidate/{candidateName}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByCandidateName(string candidateName)
         {
             if (String.IsNullOrEmpty(candidateName))
-                return BadRequest(new { message = "A candidate name is required." });
+                return BadRequest(NewReturnMessage("A candidate name is required."));
 
-            return Ok();
+            // rold_id for candidates = 5
+            var ridings = await postgres.People
+                .Where(p => p.RoleId == 5)
+                .Where(p => p.FirstName.Contains(candidateName) || p.LastName.Contains(candidateName))
+                .Join(postgres.RidingLists, p => p.RidingId, r => r.RidingId, (p, r) => new { p, r })
+                .Join(postgres.OfficeLists, pr => pr.r.OfficeId, o => o.OfficeId, (pr, o) => new { pr, o })
+                .Join(postgres.ProvinceLists, pro => pro.o.ProvinceId, l => l.ProvinceId, (pro, l) => new { pro, l })
+                .Select(x => new Riding
+                {
+                    Id = x.pro.pr.r.RidingId,
+                    Name = x.pro.pr.r.RidingName,
+                    Email = x.pro.pr.r.RidingEmail,
+                    Phone = x.pro.pr.r.RidingPhone,
+                    Fax = x.pro.pr.r.RidingFax,
+                    Office = new Office
+                    {
+                        StreetNumber = x.pro.o.StreetNumber,
+                        StreetName = x.pro.o.StreetName,
+                        UnitNumber = x.pro.o.UnitNumber,
+                        City = x.pro.o.City,
+                        Province = x.l.ProvinceName,
+                        PostCode = x.pro.o.PostCode,
+                        IsPublic = x.pro.o.IsPublic
+                    }
+                })
+                .OrderBy(z => z.Id)
+                .ToArrayAsync();
+
+            if (ridings == null)
+                return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
+
+            //foreach (var riding in ridings)
+            //{
+            //    Coordinates gps = await GetRidingCentroid(riding.Id);
+            //    if (gps != null)
+            //        riding.Centroid = gps;
+            //}
+
+            return Ok(ridings);
         }
 
         [HttpGet]
-        [Route("Locate/{ridingName}")]
+        [Route("Locate/Riding/{ridingName}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByRidingName(string ridingName)
         {
             if (String.IsNullOrEmpty(ridingName))
-                return BadRequest(new { message = "A riding name is required." });
+                return BadRequest(NewReturnMessage("A riding name is required."));
 
-            return Ok();
+            var ridings = await postgres.RidingLists
+                .Where(r => r.RidingName.ToLower().Contains(ridingName.ToLower()))
+                .Join(postgres.OfficeLists, r => r.OfficeId, o => o.OfficeId, (r, o) => new { r, o })
+                .Join(postgres.ProvinceLists, ro => ro.o.ProvinceId, l => l.ProvinceId, (ro, l) => new { ro, l })
+                .Select(x => new Riding
+                {
+                    Id = x.ro.r.RidingId,
+                    Name = x.ro.r.RidingName,
+                    Email = x.ro.r.RidingEmail,
+                    Phone = x.ro.r.RidingPhone,
+                    Fax = x.ro.r.RidingFax,
+                    Office = new Office
+                    {
+                        StreetNumber = x.ro.o.StreetNumber,
+                        StreetName = x.ro.o.StreetName,
+                        UnitNumber = x.ro.o.UnitNumber,
+                        City = x.ro.o.City,
+                        Province = x.l.ProvinceName,
+                        PostCode = x.ro.o.PostCode,
+                        IsPublic = x.ro.o.IsPublic
+                    }
+                })
+                .OrderBy(z => z.Id)
+                .ToArrayAsync();
+
+            if (ridings == null)
+                return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
+
+            //foreach (var riding in ridings)
+            //{
+            //    Coordinates gps = await GetRidingCentroid(riding.Id);
+            //    if (gps != null)
+            //        riding.Centroid = gps;
+            //}
+
+            return Ok(ridings);
         }
 
         [HttpGet]
-        [Route("Locate/{postCode}")]
+        [Route("Locate/PostCode/{postCode}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByPostCode(string postCode)
         {
             if (String.IsNullOrEmpty(postCode))
-                return BadRequest(new { message = "A postal code is required." });
+                return BadRequest(NewReturnMessage("A postal code is required."));
 
             HttpResponseMessage mapquestCall = await client.GetAsync(GetMapquestCall(postCode));
 
@@ -189,11 +294,10 @@ namespace SmartVotingAPI.Controllers.Application
             {
                 var onResponse = await onCall.Content.ReadAsStringAsync();
                 JsonElement onRoot = JsonDocument.Parse(onResponse).RootElement;
-                Console.WriteLine();
                 return Ok();
             }
 
-            return BadRequest(new { message = "Open North API call failed." });
+            return BadRequest(NewReturnMessage("Open North API call failed."));
         }
 
         [HttpGet]
@@ -223,7 +327,7 @@ namespace SmartVotingAPI.Controllers.Application
                 return Ok(riding);
             }
 
-            return BadRequest(new { message = "Open North API call failed." });
+            return BadRequest(NewReturnMessage("Open North API call failed."));
         }
 
         [HttpGet]
@@ -346,43 +450,6 @@ namespace SmartVotingAPI.Controllers.Application
                     }
                 })
                 .ToArrayAsync();
-
-            //var candidates = await postgres.People
-            //    .Where(p => p.RidingId == id && p.RoleId == 5)
-            //    .Join(postgres.SocialMediaLists, p => p.SocialId, s => s.SocialId, (p, s) => new { p, s })
-            //    .Join(postgres.OfficeLists, ps => ps.p.OfficeId, o => o.OfficeId, (ps, o) => new { ps, o })
-            //    .Join(postgres.OfficeTypes, pso => pso.o.TypeId, t => t.TypeId, (pso, t) => new { pso, t })
-            //    .Join(postgres.ProvinceLists, psot => psot.pso.o.ProvinceId, n => n.ProvinceId, (psot, n) => new { psot, n })
-            //    .Select(x => new Models.DTO.Person
-            //    {
-            //        FirstName = x.psot.pso.ps.p.FirstName,
-            //        LastName = x.psot.pso.ps.p.LastName,
-            //        EmailAddress = x.psot.pso.ps.p.EmailAddress,
-            //        PhoneNumber = x.psot.pso.ps.p.PhoneNumber,
-            //        Office = new Office
-            //        {
-            //            Type = x.psot.t.TypeName,
-            //            StreetNumber = x.psot.pso.o.StreetNumber,
-            //            StreetName = x.psot.pso.o.StreetName,
-            //            UnitNumber = x.psot.pso.o.UnitNumber,
-            //            City = x.psot.pso.o.City,
-            //            Province = x.n.ProvinceName,
-            //            PostCode = x.psot.pso.o.PostCode,
-            //            PoBox = x.psot.pso.o.PoBox,
-            //            IsPublic = x.psot.pso.o.IsPublic
-            //        },
-            //        SocialMedia = new SocialMedia
-            //        {
-            //            TwitterId = x.psot.pso.ps.s.TwitterId,
-            //            InstagramId = x.psot.pso.ps.s.InstagramId,
-            //            FacebookId = x.psot.pso.ps.s.FacebookId,
-            //            YoutubeId = x.psot.pso.ps.s.YoutubeId,
-            //            SnapchatId = x.psot.pso.ps.s.SnapchatId,
-            //            FlickrId = x.psot.pso.ps.s.FlickrId,
-            //            TiktokId = x.psot.pso.ps.s.TiktokId
-            //        }
-            //    })
-            //    .ToArrayAsync();
 
             riding.Candidates = candidates;
 

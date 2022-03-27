@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
+using SmartVotingAPI.Models.DTO;
 using System.Net;
 using System.Net.Mail;
 using System.Security.Cryptography;
@@ -59,6 +60,31 @@ namespace SmartVotingAPI.Controllers
 
             return json;
         }
+
+        protected async Task<Coordinates?> GetRidingCentroid(int ridingId)
+        {
+            string url = $"https://represent.opennorth.ca/boundaries/federal-electoral-districts/{ridingId}/centroid";
+
+            HttpResponseMessage openNorthCall = await client.GetAsync(url);
+
+            if (openNorthCall.IsSuccessStatusCode)
+            {
+                var response = await openNorthCall.Content.ReadAsStringAsync();
+                JsonDocument json = JsonDocument.Parse(response);
+                JsonElement element = json.RootElement;
+                Coordinates coordinates = new()
+                {
+                    Latitude = element.GetProperty("coordinates")[1].GetDecimal(),
+                    Longitude = element.GetProperty("coordinates")[0].GetDecimal(),
+                    Type = element.GetProperty("type").ToString()
+                };
+                return coordinates;
+            }
+
+            return null;
+        }
+
+
 
         protected string GetMapquestCall(string postCode)
         {
