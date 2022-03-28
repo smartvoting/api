@@ -291,13 +291,13 @@ namespace SmartVotingAPI.Data
 
             modelBuilder.Entity<PastResult>(entity =>
             {
-                entity.HasKey(e => e.EntryId)
+                entity.HasKey(e => e.RecordId)
                     .HasName("past_results_pk");
 
                 entity.ToTable("past_results");
 
-                entity.Property(e => e.EntryId)
-                    .HasColumnName("entry_id")
+                entity.Property(e => e.RecordId)
+                    .HasColumnName("record_id")
                     .HasDefaultValueSql("uuid_generate_v4()");
 
                 entity.Property(e => e.CandidateId).HasColumnName("candidate_id");
@@ -313,13 +313,13 @@ namespace SmartVotingAPI.Data
 
             modelBuilder.Entity<PastTurnout>(entity =>
             {
-                entity.HasKey(e => e.EntryId)
+                entity.HasKey(e => e.RecordId)
                     .HasName("past_turnout_pk");
 
                 entity.ToTable("past_turnout");
 
-                entity.Property(e => e.EntryId)
-                    .HasColumnName("entry_id")
+                entity.Property(e => e.RecordId)
+                    .HasColumnName("record_id")
                     .HasDefaultValueSql("uuid_generate_v4()");
 
                 entity.Property(e => e.ElectionId).HasColumnName("election_id");

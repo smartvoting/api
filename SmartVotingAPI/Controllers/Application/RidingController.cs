@@ -1,13 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using SmartVotingAPI.Data;
-using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.DTO;
 using System.Text.Json;
 using System.Collections;
