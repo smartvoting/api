@@ -5,6 +5,8 @@ namespace SmartVotingAPI.Models.DTO.Account
     public class UserToken
     {
         [Required]
+        public int PartyId { get; set; }
+        [Required]
         public int UserId { get; set; }
 
         [Required]

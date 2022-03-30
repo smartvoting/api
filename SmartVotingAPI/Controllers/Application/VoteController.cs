@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.DTO;
 using SmartVotingAPI.Models.DTO.Vote;
@@ -12,7 +11,6 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Amazon.QLDB.Driver.Generic;
 using Amazon.QLDB.Driver.Serialization;
 using SmartVotingAPI.Models.QLDB;
 
@@ -131,6 +129,7 @@ namespace SmartVotingAPI.Controllers.Application
             bool validIp = await IsValidIpAddress(data.RemoteIp);
             bool validAuthKey = await IsValidAuthKey(data.AuthKey);
             bool validVoterClaim = IsValidVoterGuid(voterClaim);
+
             if (!validIp || !validAuthKey)
                 return Unauthorized();
             if (!validVoterClaim)
@@ -167,32 +166,30 @@ namespace SmartVotingAPI.Controllers.Application
             postgres.VoterSecurities.Update(voter);
             await postgres.SaveChangesAsync();
 
-            var email = await postgres.VoterLists
+            var person = await postgres.VoterLists
                 .Where(a => a.VoterId.Equals(voterClaim))
                 .Select(a => new
                 { 
+                    a.FirstName,
+                    a.LastName,
                     a.EmailAddress
                 })
                 .FirstOrDefaultAsync();
 
-            if (email == null)
+            if (person == null)
                 return BadRequest();
 
-            JsonObject json = new()
-            {
-                ["pin"] = pin
-            };
+            string name = person.FirstName + " " + person.LastName;
+            string subject = "Email PIN Verification - Smart Voting CC";
+            string body = "<h1>Smart Voting CC</h1>" +
+                "<hr/>" +
+                "<p>Your voter email verification pin is: <strong><code>" + pin + "</code></strong></p>" +
+                "<hr/>" +
+                "<h3>DO NOT SHARE THIS PIN NUMBER WITH ANYONE</h3>";
 
-            string emailData = JsonSerializer.Serialize(json);
+            bool result = await SendEmailSES(name, person.EmailAddress, subject, body);
 
-            //bool emailSent = await SendEmailSES(email, "vote-email-pin", emailData);
-            bool emailSent = true;
-
-            //string body = VotePinEmail(pin);
-
-            //bool emailSent = await SendEmailSES(email, "Voter Authentication PIN", body);
-
-            if (!emailSent)
+            if (!result)
                 return BadRequest();
 
             return Ok();
@@ -210,6 +207,7 @@ namespace SmartVotingAPI.Controllers.Application
             bool validIp = await IsValidIpAddress(data.RemoteIp);
             bool validAuthKey = await IsValidAuthKey(data.AuthKey);
             bool validVoterClaim = IsValidVoterGuid(voterClaim);
+
             if (!validIp || !validAuthKey)
                 return Unauthorized();
             if (!validVoterClaim)
@@ -261,6 +259,7 @@ namespace SmartVotingAPI.Controllers.Application
             bool validIp = await IsValidIpAddress(data.RemoteIp);
             bool validAuthKey = await IsValidAuthKey(data.AuthKey);
             bool validVoterClaim = IsValidVoterGuid(voterClaim);
+
             if (!validIp || !validAuthKey)
                 return Unauthorized();
             if (!validVoterClaim)
@@ -303,13 +302,20 @@ namespace SmartVotingAPI.Controllers.Application
         {
             Guid voterClaim = Guid.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString());
             string voterId = User.Claims.FirstOrDefault(a => a.Type.Equals("voter")).Value.ToString();
+            int candidateId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("candidate")).Value.ToString());
+            int ridingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString());
 
             bool validIp = await IsValidIpAddress(data.RemoteIp);
             bool validAuthKey = await IsValidAuthKey(data.AuthKey);
             bool validVoterClaim = IsValidVoterGuid(voterClaim);
+
             if (!validIp || !validAuthKey)
                 return Unauthorized();
             if (!validVoterClaim)
+                return BadRequest();
+            if (candidateId <= 0)
+                return BadRequest();
+            if (ridingId <= 0)
                 return BadRequest();
 
             //bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
@@ -339,14 +345,14 @@ namespace SmartVotingAPI.Controllers.Application
             VoterToken voter = new()
             {
                 VoterId = voterId,
-                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString()),
+                RidingId = ridingId,
                 Timestamp = timestamp
             };
 
             BallotToken vote = new()
             {
-                CandidateId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("candidate")).Value.ToString()),
-                RidingId = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("riding")).Value.ToString()),
+                CandidateId = candidateId,
+                RidingId = ridingId,
                 Timestamp = timestamp
             };
 
@@ -362,6 +368,25 @@ namespace SmartVotingAPI.Controllers.Application
             voterEntry.VoteCast = true;
             postgres.VoterLists.Update(voterEntry);
             await postgres.SaveChangesAsync();
+
+            var candidate = await postgres.People.FindAsync(candidateId);
+            var riding = await postgres.RidingLists.FindAsync(ridingId);
+
+            string name = voterEntry.FirstName + " " + voterEntry.LastName;
+            string subject = "Vote Confirmation - Smart Voting CC";
+            string body = "<h1>Smart Voting CC</h1>" +
+                "<hr/>" +
+                "<p>You have successfully cast your ballot in the election.</p>" +
+                "<p>You Voted For: <strong>" + candidate.FirstName + " " + candidate.LastName + "</strong></p>" +
+                "<p>Your Riding Is: <strong>" + riding.RidingName + "</strong></p>" +
+                "<p>Your Voter ID Number: <strong>" + voterId.ToUpper() + "</strong></p>" +
+                "<hr/>" +
+                "<h3>DO NOT SHARE THIS EMAIL WITH ANYONE</h3>";
+
+            bool result = await SendEmailSES(name, voterEntry.EmailAddress, subject, body);
+
+            if (!result)
+                return BadRequest();
 
             return Ok();
         }
@@ -499,14 +524,6 @@ namespace SmartVotingAPI.Controllers.Application
             var jwt = new JwtSecurityTokenHandler().WriteToken(token);
 
             return jwt;
-        }
-        #endregion
-
-        #region Email Body Templates
-        private string VotePinEmail(int pin)
-        {
-            string body = "Your voting pin is: " + pin.ToString() + "\n\nDo not share this pin with anyone. It is needed on step 4 to cast your vote and is unique to you. If someone else has this pin, they may be able to vote on your behalf.";
-            return body;
         }
         #endregion
     }

@@ -61,7 +61,6 @@ builder.Services.AddAuthorization(o =>
     o.AddPolicy("LocalRiding", policy => policy.RequireClaim("RoleGroup", "LR"));
 });
 
-
 AWSOptions awsOptions = new AWSOptions
 {
     Credentials = new BasicAWSCredentials(builder.Configuration.GetSection("AppSettings").GetValue<string>("AmazonAWS:Username"), builder.Configuration.GetSection("AppSettings").GetValue<string>("AmazonAWS:Password")),
@@ -79,6 +78,7 @@ builder.Services.AddApiVersioning(o =>
 });
 
 builder.Services.AddAWSService<IAmazonSimpleEmailService>();
+
 
 
 var app = builder.Build();

@@ -20,6 +20,7 @@ namespace SmartVotingAPI.Data
         public virtual DbSet<ElectionToken> ElectionTokens { get; set; } = null!;
         public virtual DbSet<OfficeList> OfficeLists { get; set; } = null!;
         public virtual DbSet<OfficeType> OfficeTypes { get; set; } = null!;
+        public virtual DbSet<PartyBlogList> PartyBlogLists { get; set; } = null!;
         public virtual DbSet<PartyList> PartyLists { get; set; } = null!;
         public virtual DbSet<PastCandidate> PastCandidates { get; set; } = null!;
         public virtual DbSet<PastElection> PastElections { get; set; } = null!;
@@ -149,6 +150,24 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.TypeName)
                     .HasColumnType("character varying")
                     .HasColumnName("type_name");
+            });
+
+            modelBuilder.Entity<PartyBlogList>(entity =>
+            {
+                entity.HasKey(e => e.PostId)
+                    .HasName("party_blog_list_pk");
+
+                entity.ToTable("party_blog_list");
+
+                entity.Property(e => e.PostId)
+                    .HasColumnName("post_id")
+                    .HasDefaultValueSql("uuid_generate_v4()");
+
+                entity.Property(e => e.PartyId).HasColumnName("party_id");
+
+                entity.Property(e => e.PostName)
+                    .HasColumnType("character varying")
+                    .HasColumnName("post_name");
             });
 
             modelBuilder.Entity<PartyList>(entity =>

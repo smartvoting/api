@@ -151,32 +151,61 @@ namespace SmartVotingAPI.Controllers
             return false;
         }
 
-        protected async Task<bool> SendEmailSES(string recipient, string template, string data)
+        protected async Task<bool> SendEmailSES(string recipient, string destination, string subject, string body)
         {
-            string sender = "noreply@mail.smartvoting.cc";
-            string username = appSettings.Value.AmazonAWS.Username;
-            string password = appSettings.Value.AmazonAWS.Password;
-            var emailClient = new AmazonSimpleEmailServiceClient(new BasicAWSCredentials(username, password), RegionEndpoint.USEast1);
+            string sender = appSettings.Value.AmazonSES.EmailAddress;
+            string name = appSettings.Value.AmazonSES.DisplayName;
+            string username = appSettings.Value.AmazonSES.Username;
+            string password = appSettings.Value.AmazonSES.Password;
+            string host = appSettings.Value.AmazonSES.Host;
+            int port = appSettings.Value.AmazonSES.Port;
 
-            var request = new SendTemplatedEmailRequest
+            MailMessage message = new MailMessage();
+            message.IsBodyHtml = true;
+            message.From = new MailAddress(sender, name);
+            message.To.Add(new MailAddress(destination, recipient));
+            message.Subject = subject;
+            message.Body = body;
+            
+            using (var client = new SmtpClient(host, port))
             {
-                Source = sender,
-                Destination = new Destination { ToAddresses = new List<string> { recipient } },
-                Template = template,
-                TemplateData = data
-            };
+                client.Credentials = new NetworkCredential(username, password);
+                client.EnableSsl = true;
+                try
+                {
+                    Console.WriteLine("Attempting to send email...");
+                    client.Send(message);
+                    Console.WriteLine("Email sent!");
+                } catch (Exception e)
+                {
+                    Console.WriteLine("The email was not sent.");
+                    Console.WriteLine("Error message: " + e.Message);
+                    return false;
+                }
+            }
 
-            try
-            {
-                Console.WriteLine("Sending email using Amazon SES...");
-                var result = await emailClient.SendTemplatedEmailAsync(request);
-                Console.WriteLine("The email was sent successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("The email was not sent.");
-                Console.WriteLine("Error message: " + ex.Message);
-            }
+            return true;
+            //var emailClient = new AmazonSimpleEmailServiceClient(new BasicAWSCredentials(username, password), RegionEndpoint.USEast1);
+
+            //var request = new SendTemplatedEmailRequest
+            //{
+            //    Source = sender,
+            //    Destination = new Destination { ToAddresses = new List<string> { recipient } },
+            //    Template = template,
+            //    TemplateData = data
+            //};
+
+            //try
+            //{
+            //    Console.WriteLine("Sending email using Amazon SES...");
+            //    var result = await emailClient.SendTemplatedEmailAsync(request);
+            //    Console.WriteLine("The email was sent successfully.");
+            //}
+            //catch (Exception ex)
+            //{
+            //    Console.WriteLine("The email was not sent.");
+            //    Console.WriteLine("Error message: " + ex.Message);
+            //}
 
             //using (var client = new AmazonSimpleEmailServiceClient(RegionEndpoint.USEast1))
             //{
@@ -218,8 +247,6 @@ namespace SmartVotingAPI.Controllers
             //        Console.WriteLine("Error message: " + ex.Message);
             //    }
             //}
-
-            return true;
         }
 
         #region Security Tokens

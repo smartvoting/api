@@ -13,7 +13,7 @@ namespace SmartVotingAPI.Controllers.Application
     [ApiVersion("1")]
     [Route("v1/Voters")]
     [ApiController]
-    [Authorize(Policy = "ElectionOfficials")]
+    //[Authorize(Policy = "ElectionOfficials")]
     public class VoterController : BaseController
     {
         public VoterController(PostgresDbContext _context, IOptions<AppSettings> _app) : base(_context, _app) { }
@@ -64,7 +64,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPost]
         [Route("Generate")]
-        [Authorize(Roles = "SA")]
+        //[Authorize(Roles = "SA")]
         public async Task<IActionResult> GenerateVoters([Required] int NumberOfVoters)
         {
             if (NumberOfVoters <= 0)
@@ -143,7 +143,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpDelete]
         [Route("Delete")]
-        [Authorize(Roles = "SA")]
+        //[Authorize(Roles = "SA")]
         public async Task<IActionResult> DeleteVoterList()
         {
             PostgresDbContext context = new();

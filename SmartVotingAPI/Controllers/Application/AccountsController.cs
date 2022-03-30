@@ -41,6 +41,7 @@ namespace SmartVotingAPI.Controllers.Application
 
             UserToken user = new()
             {
+                PartyId = person.PartyId,
                 UserId = person.PersonId,
                 RoleType = role.RoleCode,
                 RoleGroup = role.RoleGroup
@@ -51,8 +52,46 @@ namespace SmartVotingAPI.Controllers.Application
             return Ok(token);
         }
 
+        [HttpPost]
+        [Route("Password/Reset")]
+        public async Task<IActionResult> ResetPassword([Required] int AccountID)
+        {
+            if (AccountID <= 0)
+                return BadRequest(NewReturnMessage("A valid account id number is required."));
+
+            string new_pwd = "SmartVoting#12345";
+            string pwd_hash = GetTextHash(new_pwd);
+
+            var person = await postgres.People.FindAsync(AccountID);
+
+            if (person == null)
+                return NoContent();
+
+            string subject = "New Account Password - Smart Voting CC";
+            string body = "<h1>Smart Voting CC</h1>" +
+                "<hr/>" +
+                "<p>Your new account password is: <strong><code>" + new_pwd + "</code></strong></p>" +
+                "<hr/>" +
+                "<h3>DO NOT SHARE THIS PASSWORD NUMBER WITH ANYONE - PLEASE CHANGE AS SOON AS POSSIBLE</h3>";
+
+            string name = person.FirstName + " " + person.LastName;
+            bool result = await SendEmailSES(name, person.EmailAddress, subject, body);
+
+            if (!result)
+                return BadRequest(NewReturnMessage("Failed to email new password."));
+
+            person.PwdHash = pwd_hash;
+            postgres.People.Update(person);
+            int success = await postgres.SaveChangesAsync();
+
+            if (success != 1)
+                return BadRequest(NewReturnMessage("Failed to reset password."));
+
+            return Ok();
+        }
+
         [HttpPut]
-        [Route("UpdatePassword")]
+        [Route("Password/Update")]
         [Authorize]
         public async Task<IActionResult> UpdatePassword(ChangePassword data)
         {
@@ -113,6 +152,7 @@ namespace SmartVotingAPI.Controllers.Application
         {
             List<Claim> claims = new()
             {
+                new Claim("PartyId", user.PartyId.ToString()),
                 new Claim("RoleGroup", user.RoleGroup),
                 new Claim(ClaimTypes.Role, user.RoleType),
                 new Claim(ClaimTypes.UserData, user.UserId.ToString())

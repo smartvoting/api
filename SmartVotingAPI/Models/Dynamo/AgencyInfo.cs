@@ -1,5 +1,4 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace SmartVotingAPI.Models.Dynamo
 {

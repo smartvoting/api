@@ -7,6 +7,10 @@ using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.DTO;
 using System.Collections;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
+using Amazon.DynamoDBv2.DocumentModel;
+using LinqKit;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -67,7 +71,7 @@ namespace SmartVotingAPI.Controllers.Application
         public async Task<ActionResult<IEnumerable<Party>>> GetPartyById(int partyId)
         {
             if (partyId <= 0)
-                return BadRequest(new { message = "Invalid party id number."});
+                return BadRequest(new { message = "Invalid party id number." });
 
             var party = await postgres.PartyLists
                 .Where(p => p.PartyId == partyId)
@@ -230,6 +234,87 @@ namespace SmartVotingAPI.Controllers.Application
                 return NoContent();
 
             return Ok(issue);
+        }
+
+        [HttpGet]
+        [Route("Blog")]
+        public async Task<ActionResult<IEnumerable<BlogPost>>> GetBlog([Required] int PartyID, [Required] string PostID)
+        {
+            if (PartyID <= 0)
+                return BadRequest(NewReturnMessage("Party ID must be greater than zero."));
+
+            if (string.IsNullOrEmpty(PostID))
+                return BadRequest(NewReturnMessage("Post ID is required."));
+
+            var predicate = PredicateBuilder.New<PartyBlogList>(true);
+            predicate = (PartyID > 0) ? predicate.And(x => x.PartyId.Equals(PartyID)) : predicate.And(x => x.PartyId > 0);
+            predicate = string.IsNullOrEmpty(PostID) ? predicate.And(x => x.PostId.Equals(PostID)) : predicate.And(x => x.PostId.ToString().Contains(PostID));
+
+            
+
+            //var queryFilter = new QueryFilter("partyId", QueryOperator.Equal, PartyID);
+
+            //if (!string.IsNullOrEmpty(PostID))
+            //    queryFilter.AddCondition("blogId", ScanOperator.Equal, PostID);
+
+            //var queryOperationConfig = new QueryOperationConfig
+            //{
+            //    Filter = queryFilter
+            //};
+
+            //var search = dynamo.FromQueryAsync<PartyBlog>(queryOperationConfig);
+
+            //var response = await search.GetRemainingAsync();
+
+            //var list = await dynamo.LoadAsync<PartyBlog>(PartyID);
+            var response = await dynamo.LoadAsync<PartyBlog>(PartyID, PostID.ToLower());
+
+
+
+            if (response == null)
+                return NoContent();
+
+            return Ok(response);
+        }
+
+        [HttpGet]
+        [Route("Blog/List")]
+        public async Task<ActionResult<IEnumerable<BlogList>>> GetBlogList(int PartyID)
+        {
+            if (PartyID < 0)
+                return BadRequest(NewReturnMessage("Party ID must be greater than zero."));
+
+            var predicate = PredicateBuilder.New<PartyBlogList>(true);
+            predicate = (PartyID > 0) ? predicate.And(x => x.PartyId.Equals(PartyID)) : predicate.And(x => x.PartyId > 0);
+
+            var list = await postgres.PartyBlogLists
+                .Where(predicate)
+                .Join(postgres.PartyLists, x => x.PartyId, y => y.PartyId, (x, y) => new { x, y })
+                .Select(z => new BlogList
+                {
+                    PartyName = z.y.PartyName,
+                    PartyId = z.x.PartyId,
+                    PostTitle = z.x.PostName,
+                    PostId = z.x.PostId.ToString()
+                })
+                .OrderBy(z => z.PostTitle)
+                .ToArrayAsync();
+
+            if (list == null)
+                return NoContent();
+
+            return Ok(list);
+        }
+
+        [HttpPost]
+        [Route("Blog")]
+        [Authorize(Roles = "OM")]
+        public async Task<IActionResult> PostBlog(PartyBlog blog)
+        {
+            if (blog == null)
+                return BadRequest();
+
+            return Ok();
         }
     }
 }

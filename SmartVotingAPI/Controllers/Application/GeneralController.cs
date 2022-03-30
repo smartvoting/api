@@ -3,6 +3,7 @@ using Amazon.DynamoDBv2.DataModel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SmartVotingAPI.Models.Dynamo;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 
 namespace SmartVotingAPI.Controllers.Application
@@ -16,7 +17,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpGet]
         [Route("{documentType}/{agencyCode}")]
-        public async Task<ActionResult<IEnumerable<AgencyInfo>>> GetAgencyInfo(string documentType, string agencyCode)
+        public async Task<ActionResult<IEnumerable<AgencyInfo>>> GetAgencyInfo([Required] string documentType, [Required] string agencyCode)
         {
             if (agencyCode == null)
                 return BadRequest(new { message = "Agency code is required."});
