@@ -1,6 +1,6 @@
-﻿namespace SmartVotingAPI.Models.DTO.Vote
+﻿namespace SmartVotingAPI.Models.QLDB
 {
-    public class VoteToken
+    public class BallotToken
     {
         public int CandidateId { get; set; }
         public int RidingId { get; set; }

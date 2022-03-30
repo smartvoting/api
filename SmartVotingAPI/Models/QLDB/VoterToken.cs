@@ -1,4 +1,4 @@
-﻿namespace SmartVotingAPI.Models.DTO.Vote
+﻿namespace SmartVotingAPI.Models.QLDB
 {
     public class VoterToken
     {

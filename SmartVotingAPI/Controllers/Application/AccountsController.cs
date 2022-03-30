@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using SmartVotingAPI.Data;
 using SmartVotingAPI.Models.DTO;
 using SmartVotingAPI.Models.DTO.Account;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -52,7 +53,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPut]
         [Route("UpdatePassword")]
-        [Authorize(Roles = "EO, PS, LR")]
+        [Authorize]
         public async Task<IActionResult> UpdatePassword(ChangePassword data)
         {
             if (!data.Password.Equals(data.ConfirmPassword))
@@ -82,8 +83,8 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpDelete]
         [Route("DisableAccount")]
-        [Authorize(Roles = "EO, PS, LR")]
-        public async Task<IActionResult> DisableAccount(int userId)
+        [Authorize(Roles = "SA")]
+        public async Task<IActionResult> DisableAccount([Required] int userId)
         {
             if (userId <= 0)
                 return BadRequest(NewReturnMessage("User ID number provided is invalid."));
@@ -112,8 +113,8 @@ namespace SmartVotingAPI.Controllers.Application
         {
             List<Claim> claims = new()
             {
-                new Claim(ClaimTypes.Role, user.RoleGroup),
-                new Claim(ClaimTypes.Name, user.RoleType),
+                new Claim("RoleGroup", user.RoleGroup),
+                new Claim(ClaimTypes.Role, user.RoleType),
                 new Claim(ClaimTypes.UserData, user.UserId.ToString())
             };
 

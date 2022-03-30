@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SmartVotingAPI.Data;
 using Swashbuckle.AspNetCore.Filters;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false
         };
     });
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("ElectionOfficials", policy => policy.RequireClaim("RoleGroup", "EO"));
+    o.AddPolicy("PartyStaff", policy => policy.RequireClaim("RoleGroup", "PS"));
+    o.AddPolicy("LocalRiding", policy => policy.RequireClaim("RoleGroup", "LR"));
+});
 
 
 AWSOptions awsOptions = new AWSOptions

@@ -17,8 +17,7 @@ namespace SmartVotingAPI.Data
         {
         }
 
-        public virtual DbSet<ApiKey> ApiKeys { get; set; } = null!;
-        public virtual DbSet<FutureElection> FutureElections { get; set; } = null!;
+        public virtual DbSet<ElectionToken> ElectionTokens { get; set; } = null!;
         public virtual DbSet<OfficeList> OfficeLists { get; set; } = null!;
         public virtual DbSet<OfficeType> OfficeTypes { get; set; } = null!;
         public virtual DbSet<PartyList> PartyLists { get; set; } = null!;
@@ -49,71 +48,40 @@ namespace SmartVotingAPI.Data
         {
             modelBuilder.HasPostgresExtension("uuid-ossp");
 
-            modelBuilder.Entity<ApiKey>(entity =>
+            modelBuilder.Entity<ElectionToken>(entity =>
             {
-                entity.HasKey(e => e.KeyId)
-                    .HasName("api_keys_pk");
+                entity.HasKey(e => e.PublicId)
+                    .HasName("election_tokens_pk");
 
-                entity.ToTable("api_keys");
+                entity.ToTable("election_tokens");
 
-                entity.HasIndex(e => e.AuthKey, "api_keys_auth_key_uindex")
+                entity.HasIndex(e => e.PublicId, "api_keys_public_id_uindex")
                     .IsUnique();
 
-                entity.HasIndex(e => e.KeyName, "api_keys_key_name_uindex")
+                entity.HasIndex(e => e.SecretId, "api_keys_secret_id_uindex")
                     .IsUnique();
 
-                entity.Property(e => e.KeyId)
-                    .HasColumnName("key_id")
+                entity.Property(e => e.PublicId)
+                    .HasColumnName("public_id")
                     .HasDefaultValueSql("uuid_generate_v4()");
 
-                entity.Property(e => e.AuthKey)
-                    .HasColumnName("auth_key")
+                entity.Property(e => e.SecretId)
+                    .HasColumnName("secret_id")
                     .HasDefaultValueSql("uuid_generate_v4()");
-
-                entity.Property(e => e.Created)
-                    .HasColumnType("timestamp without time zone")
-                    .HasColumnName("created")
-                    .HasDefaultValueSql("now()");
 
                 entity.Property(e => e.IsActive).HasColumnName("is_active");
 
-                entity.Property(e => e.IsDevelopment).HasColumnName("is_development");
-
-                entity.Property(e => e.IsProduction).HasColumnName("is_production");
-
-                entity.Property(e => e.KeyName)
-                    .HasColumnType("character varying")
-                    .HasColumnName("key_name");
-
-                entity.Property(e => e.KeyTtl)
-                    .HasColumnName("key_ttl")
-                    .HasDefaultValueSql("3");
-            });
-
-            modelBuilder.Entity<FutureElection>(entity =>
-            {
-                entity.HasKey(e => e.ElectionId)
-                    .HasName("future_elections_pk");
-
-                entity.ToTable("future_elections");
-
-                entity.HasIndex(e => e.AuthKey, "future_elections_api_key_uindex")
-                    .IsUnique();
-
-                entity.HasIndex(e => e.ElectionDate, "future_elections_election_date_uindex")
-                    .IsUnique();
-
-                entity.Property(e => e.ElectionId)
-                    .HasColumnName("election_id")
-                    .HasDefaultValueSql("uuid_generate_v4()");
-
-                entity.Property(e => e.AuthKey).HasColumnName("auth_key");
+                entity.Property(e => e.ElectionId).HasColumnName("election_id");
 
                 entity.Property(e => e.ElectionDate).HasColumnName("election_date");
 
+                entity.Property(e => e.StartTime).HasColumnName("start_time");
+
                 entity.Property(e => e.EndTime).HasColumnName("end_time");
 
-                entity.Property(e => e.StartTime).HasColumnName("start_time");
+                entity.Property(e => e.Note)
+                    .HasColumnType("character varying")
+                    .HasColumnName("note");
             });
 
             modelBuilder.Entity<OfficeList>(entity =>
@@ -464,9 +432,6 @@ namespace SmartVotingAPI.Data
 
                 entity.ToTable("role_list");
 
-                entity.HasIndex(e => e.RoleCode, "role_list_role_code_uindex")
-                    .IsUnique();
-
                 entity.HasIndex(e => e.RoleId, "role_list_role_id_uindex")
                     .IsUnique();
 
@@ -475,13 +440,13 @@ namespace SmartVotingAPI.Data
 
                 entity.Property(e => e.RoleId).HasColumnName("role_id");
 
-                entity.Property(e => e.RoleCode)
-                    .HasMaxLength(2)
-                    .HasColumnName("role_code");
-
                 entity.Property(e => e.RoleGroup)
                     .HasMaxLength(2)
                     .HasColumnName("role_group");
+
+                entity.Property(e => e.RoleCode)
+                    .HasMaxLength(2)
+                    .HasColumnName("role_code");
 
                 entity.Property(e => e.RoleTitle)
                     .HasColumnType("character varying")
@@ -531,6 +496,8 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.YoutubeId)
                     .HasColumnType("character varying")
                     .HasColumnName("youtube_id");
+
+                entity.Property(e => e.TypeId).HasColumnName("type_id");
             });
 
             modelBuilder.Entity<VolunteerApplication>(entity =>

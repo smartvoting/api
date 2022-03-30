@@ -16,7 +16,7 @@
     public class Cvote
     {
         public int ElectionID { get; set; }
-        public string? VoteKeyID { get; set; }
+        public string? SecretKey { get; set; }
         public string? LedgerID { get; set; }
     }
 

@@ -14,5 +14,7 @@ namespace SmartVotingAPI.Models.Postgres
         public string? FlickrId { get; set; }
         public string? TiktokId { get; set; }
         public DateTime Updated { get; set; }
+        // Type ID 1 for parties and 2 for candidates
+        public int TypeId { get; set; }
     }
 }
