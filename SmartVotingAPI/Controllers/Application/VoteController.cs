@@ -32,9 +32,9 @@ namespace SmartVotingAPI.Controllers.Application
         [AllowAnonymous]
         public async Task<IActionResult> StepOne(StepOne data)
         {
-            DateTime timestamp = DateTime.Now;
+            //DateTime timestamp = DateTime.Now;
             bool validIp = await IsValidIpAddress(data.RemoteIp);
-            bool validElection = await IsActiveElection(data.AuthKey, timestamp);
+            bool validElection = await IsActiveElection(data.AuthKey);
             if (!validIp || !validElection)
                 return Unauthorized();
 
@@ -444,12 +444,12 @@ namespace SmartVotingAPI.Controllers.Application
         }
 
         // Returns true is validation is successful otherwise false
-        private async Task<bool> IsActiveElection(string key, DateTime timestamp)
+        private async Task<bool> IsActiveElection(string key)
         {
             Guid publicKey = Guid.Parse(key);
             Guid secretKey = Guid.Parse(appSettings.Value.Vote.SecretKey);
-            DateOnly date = DateOnly.FromDateTime(timestamp);
-            TimeOnly time = TimeOnly.FromDateTime(timestamp);
+            //DateOnly date = DateOnly.FromDateTime(timestamp);
+            //TimeOnly time = TimeOnly.FromDateTime(timestamp);
 
             var result = await postgres.ElectionTokens.FindAsync(publicKey);
 
@@ -462,11 +462,11 @@ namespace SmartVotingAPI.Controllers.Application
             if (result.SecretId.CompareTo(secretKey) != 0)
                 return false;
 
-            if (!result.ElectionDate.Equals(date))
-                return false;
+            //if (!result.ElectionDate.Equals(date))
+            //    return false;
 
-            if (!time.IsBetween(result.StartTime, result.EndTime))
-                return false;
+            //if (!time.IsBetween(result.StartTime, result.EndTime))
+            //    return false;
 
             return true;
         }

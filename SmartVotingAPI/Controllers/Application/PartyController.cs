@@ -246,35 +246,23 @@ namespace SmartVotingAPI.Controllers.Application
             if (string.IsNullOrEmpty(PostID))
                 return BadRequest(NewReturnMessage("Post ID is required."));
 
-            var predicate = PredicateBuilder.New<PartyBlogList>(true);
-            predicate = (PartyID > 0) ? predicate.And(x => x.PartyId.Equals(PartyID)) : predicate.And(x => x.PartyId > 0);
-            predicate = string.IsNullOrEmpty(PostID) ? predicate.And(x => x.PostId.Equals(PostID)) : predicate.And(x => x.PostId.ToString().Contains(PostID));
+            var title = await postgres.PartyBlogLists.FindAsync(Guid.Parse(PostID));
 
-            
+            var blog = await dynamo.LoadAsync<PartyBlog>(PartyID, PostID.ToLower());
 
-            //var queryFilter = new QueryFilter("partyId", QueryOperator.Equal, PartyID);
-
-            //if (!string.IsNullOrEmpty(PostID))
-            //    queryFilter.AddCondition("blogId", ScanOperator.Equal, PostID);
-
-            //var queryOperationConfig = new QueryOperationConfig
-            //{
-            //    Filter = queryFilter
-            //};
-
-            //var search = dynamo.FromQueryAsync<PartyBlog>(queryOperationConfig);
-
-            //var response = await search.GetRemainingAsync();
-
-            //var list = await dynamo.LoadAsync<PartyBlog>(PartyID);
-            var response = await dynamo.LoadAsync<PartyBlog>(PartyID, PostID.ToLower());
-
-
-
-            if (response == null)
+            if (blog == null || title == null)
                 return NoContent();
 
-            return Ok(response);
+            BlogPost post = new();
+            post.PostId = PostID;
+            post.PartyId = PartyID;
+            post.Title = title.PostName;
+            post.Body = blog.BlogBody;
+            post.Posted = DateTime.Parse(blog.DatePosted.ToString());
+            post.Modified = DateTime.Parse(blog.DateModified.ToString());
+            post.AuthorId = blog.PersonId;
+
+            return Ok(post);
         }
 
         [HttpGet]

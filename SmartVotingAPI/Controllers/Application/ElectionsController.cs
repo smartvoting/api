@@ -78,14 +78,6 @@ namespace SmartVotingAPI.Controllers.Application
             return Ok();
         }
 
-        //[HttpPut]
-        //[Route("Modify")]
-        //[Authorize(Roles = "SA")]
-        //public async Task<IActionResult> ModifyElection([Required] int ElectionID, bool? IsActive, DateTime? ElectionDate)
-        //{
-        //    return Ok();
-        //}
-
         [HttpDelete]
         [Route("Close")]
         [Authorize(Roles = "SA")]
