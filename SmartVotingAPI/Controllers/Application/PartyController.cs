@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Authorization;
 using System.ComponentModel.DataAnnotations;
 using Amazon.DynamoDBv2.DocumentModel;
 using LinqKit;
+using System.Security.Claims;
+using Amazon.DynamoDBv2;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -265,6 +267,45 @@ namespace SmartVotingAPI.Controllers.Application
             return Ok(post);
         }
 
+        [HttpPost]
+        [Route("Blog")]
+        [Authorize(Roles = "OM")]
+        public async Task<IActionResult> PostBlog(BlogPost post)
+        {
+            if (post == null)
+                return BadRequest();
+
+            int writerClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals(ClaimTypes.UserData)).Value.ToString());
+            int partyClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals("PartyId")).Value.ToString());
+
+            DateTime timestamp = DateTime.Now;
+
+            if (writerClaim <= 0 || partyClaim <= 0)
+                return BadRequest();
+
+            PartyBlogList postgresql = new PartyBlogList();
+            postgresql.PartyId = partyClaim;
+            postgresql.PostName = post.Title;
+
+            postgres.PartyBlogLists.Add(postgresql);
+            var pResult = await postgres.SaveChangesAsync();
+
+            if (pResult == null)
+                return BadRequest();
+
+            PartyBlog dynamodb = new PartyBlog();
+            dynamodb.PartyId = partyClaim;
+            dynamodb.BlogId = postgresql.PostId.ToString();
+            dynamodb.BlogBody = post.Body;
+            dynamodb.DatePosted = timestamp.ToString();
+            dynamodb.DateModified = timestamp.ToString();
+            dynamodb.PersonId = writerClaim;
+
+            await dynamo.SaveAsync(dynamodb);
+
+            return Ok();
+        }
+
         [HttpGet]
         [Route("Blog/List")]
         public async Task<ActionResult<IEnumerable<BlogList>>> GetBlogList(int PartyID)
@@ -292,17 +333,6 @@ namespace SmartVotingAPI.Controllers.Application
                 return NoContent();
 
             return Ok(list);
-        }
-
-        [HttpPost]
-        [Route("Blog")]
-        [Authorize(Roles = "OM")]
-        public async Task<IActionResult> PostBlog(PartyBlog blog)
-        {
-            if (blog == null)
-                return BadRequest();
-
-            return Ok();
         }
     }
 }
