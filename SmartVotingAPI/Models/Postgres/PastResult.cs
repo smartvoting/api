@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace SmartVotingAPI.Models.Postgres
+﻿namespace SmartVotingAPI.Models.Postgres
 {
     public partial class PastResult
     {

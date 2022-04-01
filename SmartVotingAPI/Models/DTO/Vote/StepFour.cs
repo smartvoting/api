@@ -6,5 +6,8 @@ namespace SmartVotingAPI.Models.DTO.Vote
     {
         [Required]
         public int EmailPin { get; set; }
+
+        [Required]
+        public string HcaptchaResponse { get; set; } = null!;
     }
 }

@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.QLDB.Driver.Serialization;
 using SmartVotingAPI.Models.QLDB;
+using Microsoft.AspNetCore.Cors;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -20,6 +21,7 @@ namespace SmartVotingAPI.Controllers.Application
     [Route("v1/Vote")]
     [ApiController]
     [Authorize(Roles = "Voter")]
+    [EnableCors("corsvoting")]
     public class VoteController : BaseController
     {
         private static HttpClient client = new HttpClient();
@@ -213,6 +215,10 @@ namespace SmartVotingAPI.Controllers.Application
             if (!validVoterClaim)
                 return BadRequest();
 
+            bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
+            if (!response)
+                return Unauthorized(NewReturnMessage("hCaptcha Failed 4.1"));
+
             const int candidateRoleId = 5;
 
             var pin = await postgres.VoterSecurities
@@ -265,10 +271,6 @@ namespace SmartVotingAPI.Controllers.Application
             if (!validVoterClaim)
                 return BadRequest();
 
-            //bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
-            //if (!response)
-            //    return BadRequest();
-
             var candidate = await postgres.People
                 .Where(a => a.PersonId == candidateId)
                 .Where(a => a.RidingId == ridingClaim)
@@ -318,9 +320,9 @@ namespace SmartVotingAPI.Controllers.Application
             if (ridingId <= 0)
                 return BadRequest();
 
-            //bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
-            //if (!response)
-            //    return BadRequest();
+            bool response = await VerifyHcaptcha(data.HcaptchaResponse, data.RemoteIp);
+            if (!response)
+                return Unauthorized(NewReturnMessage("hCaptcha Failed 6.1"));
 
             if (!data.UserConfirmation)
                 return BadRequest();
@@ -330,15 +332,25 @@ namespace SmartVotingAPI.Controllers.Application
                 .WithSerializer(new ObjectSerializer())
                 .Build();
 
-            var readResult = await driver.Execute(async txn =>
+            try
             {
-                IQuery<VoterToken> query = txn.Query<VoterToken>("SELECT * FROM Voters WHERE VoterId = ?", voterId);
-                var result = await txn.Execute(query);
-                return await result.ToArrayAsync();
-            });
+                var readResult = await driver.Execute(async txn =>
+                {
+                    IQuery<VoterToken> query = txn.Query<VoterToken>("SELECT * FROM Voters WHERE VoterId = ?", voterId);
+                    var result = await txn.Execute(query);
+                    return await result.ToArrayAsync();
+                });
 
-            if (readResult.Length > 0)
-                return Unauthorized(NewReturnMessage("A vote has already been recorded by this voter. The vote will not be saved or changed."));
+                if (readResult.Length > 0)
+                    return Unauthorized(NewReturnMessage("A vote has already been recorded by this voter. The vote will not be saved or changed."));
+            } catch (Exception e)
+            {
+                Console.WriteLine("=== START =================================================");
+                Console.WriteLine("BREAK - 6.1");
+                Console.WriteLine("E: " + e.Message);
+                Console.WriteLine("=== END ===================================================");
+                return BadRequest();
+            }
 
             DateTime timestamp = DateTime.Now;
 
@@ -346,7 +358,8 @@ namespace SmartVotingAPI.Controllers.Application
             {
                 VoterId = voterId,
                 RidingId = ridingId,
-                Timestamp = timestamp
+                Timestamp = timestamp,
+                IpAddress = data.RemoteIp
             };
 
             BallotToken vote = new()
@@ -356,13 +369,23 @@ namespace SmartVotingAPI.Controllers.Application
                 Timestamp = timestamp
             };
 
-            await driver.Execute(async txn =>
+            try
             {
-                IQuery<VoterToken> voterQuery = txn.Query<VoterToken>("INSERT INTO Voters ?", voter);
-                IQuery<BallotToken> voteQuery = txn.Query<BallotToken>("INSERT INTO Ballots ?", vote);
-                await txn.Execute(voterQuery);
-                await txn.Execute(voteQuery);
-            });
+                await driver.Execute(async txn =>
+                {
+                    IQuery<VoterToken> voterQuery = txn.Query<VoterToken>("INSERT INTO Voters ?", voter);
+                    IQuery<BallotToken> voteQuery = txn.Query<BallotToken>("INSERT INTO Ballots ?", vote);
+                    await txn.Execute(voterQuery);
+                    await txn.Execute(voteQuery);
+                });
+            } catch (Exception e)
+            {
+                Console.WriteLine("=== START =================================================");
+                Console.WriteLine("BREAK - 6.2");
+                Console.WriteLine("E: " + e.Message);
+                Console.WriteLine("=== END ===================================================");
+                return BadRequest();
+            }
 
             var voterEntry = await postgres.VoterLists.FindAsync(Guid.Parse(voter.VoterId));
             voterEntry.VoteCast = true;

@@ -41,6 +41,12 @@ builder.Services.AddCors(o =>
         {
             builder.WithOrigins("http://localhost:3000", "https://smartvoting.cc").AllowAnyHeader().AllowAnyMethod();
         });
+
+    o.AddPolicy("corsvoting",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:3000", "https://smartvoting.cc").AllowAnyHeader().WithMethods("POST");
+        });
 });
 builder.Services.AddDbContext<PostgresDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("RDS_Postgres")));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

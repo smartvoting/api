@@ -129,10 +129,10 @@ namespace SmartVotingAPI.Controllers
             string baseUrl = "https://hcaptcha.com/siteverify";
             List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
             {
-                //new KeyValuePair<string, string>("secret", appSettings.Value.API.HcaptchaSecret),
-                //new KeyValuePair<string, string>("response", token),
-                new KeyValuePair<string, string>("secret", "0x0000000000000000000000000000000000000000"),
-                new KeyValuePair<string, string>("response", "10000000-aaaa-bbbb-cccc-000000000001"),
+                new KeyValuePair<string, string>("secret", appSettings.Value.API.HcaptchaSecret),
+                new KeyValuePair<string, string>("response", token),
+                //new KeyValuePair<string, string>("secret", "0x0000000000000000000000000000000000000000"),
+                //new KeyValuePair<string, string>("response", "10000000-aaaa-bbbb-cccc-000000000001"),
                 new KeyValuePair<string, string>("remoteip", remoteIp)
             };
 
@@ -185,68 +185,6 @@ namespace SmartVotingAPI.Controllers
             }
 
             return true;
-            //var emailClient = new AmazonSimpleEmailServiceClient(new BasicAWSCredentials(username, password), RegionEndpoint.USEast1);
-
-            //var request = new SendTemplatedEmailRequest
-            //{
-            //    Source = sender,
-            //    Destination = new Destination { ToAddresses = new List<string> { recipient } },
-            //    Template = template,
-            //    TemplateData = data
-            //};
-
-            //try
-            //{
-            //    Console.WriteLine("Sending email using Amazon SES...");
-            //    var result = await emailClient.SendTemplatedEmailAsync(request);
-            //    Console.WriteLine("The email was sent successfully.");
-            //}
-            //catch (Exception ex)
-            //{
-            //    Console.WriteLine("The email was not sent.");
-            //    Console.WriteLine("Error message: " + ex.Message);
-            //}
-
-            //using (var client = new AmazonSimpleEmailServiceClient(RegionEndpoint.USEast1))
-            //{
-            //    var request = new SendEmailRequest
-            //    {
-            //        Source = source,
-            //        Destination = new Destination
-            //        {
-            //            ToAddresses = new List<string> { recipient }
-            //        },
-            //        Message = new Message
-            //        {
-            //            Subject = new Content(subject),
-            //            Body = new Body
-            //            {
-            //                //Html = new Content
-            //                //{
-            //                //    Charset = "UTF-8",
-            //                //    Data = message
-            //                //},
-            //                Text = new Content
-            //                {
-            //                    Charset = "UTF-8",
-            //                    Data = message
-            //                }
-            //            }
-            //        }
-            //    };
-
-            //    try
-            //    {
-            //        Console.WriteLine("Sending email using Amazon SES...");
-            //        var response = client.SendEmailAsync(request);
-            //        Console.WriteLine("The email was sent successfully.");
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine("The email was not sent.");
-            //        Console.WriteLine("Error message: " + ex.Message);
-            //    }
-            //}
         }
 
         #region Security Tokens
