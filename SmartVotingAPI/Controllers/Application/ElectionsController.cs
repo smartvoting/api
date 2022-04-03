@@ -11,6 +11,7 @@ using SmartVotingAPI.Models.Postgres;
 using SmartVotingAPI.Models.QLDB;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -119,10 +120,10 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpDelete]
         [Route("Transfer")]
-        //[Authorize(Roles = "EM")]
-        [AllowAnonymous]
+        [Authorize(Roles = "EM,SA")]
         public async Task<IActionResult> TransferElection([Required] int ElectionID)
         {
+            int numRidings = 338;
             bool isValid = await postgres.ElectionTokens.Where(e => e.ElectionId.Equals(ElectionID)).FirstOrDefaultAsync() != null;
 
             if (!isValid)
@@ -130,9 +131,8 @@ namespace SmartVotingAPI.Controllers.Application
 
             var ridingList = await postgres.RidingLists.Where(r => r.RidingId > 100).OrderBy(r => r.RidingId).ToArrayAsync();
             var candidateList = await postgres.People.Where(z => z.RoleId.Equals(5)).OrderBy(z => z.PersonId).ToArrayAsync();
-
-            //Models.Postgres.PastResult[] results = new Models.Postgres.PastResult[ridingList.Length];
-            var electionResults = new ArrayList();
+            int userClaim = int.Parse(User.Claims.FirstOrDefault(a => a.Type.Equals(ClaimTypes.UserData)).Value.ToString());
+            Queue<Models.Postgres.PastResult[]> electionResults = new();
 
             IAsyncQldbDriver driver = AsyncQldbDriver.Builder()
                 .WithLedger(appSettings.Value.Vote.LedgerID)
@@ -162,6 +162,7 @@ namespace SmartVotingAPI.Controllers.Application
                     ridingResults[i].RidingId = riding.RidingId;
                     ridingResults[i].CandidateId = candidates[i].PersonId;
                     ridingResults[i].TotalVotes = 0;
+                    ridingResults[i].Elected = false;
                 }
 
                 Console.WriteLine();
@@ -182,13 +183,30 @@ namespace SmartVotingAPI.Controllers.Application
                     }
                 }
 
+                int highestVotes = -1;
+                int ridingWinner = -1;
+
+                for (int i = 0; i < ridingResults.Length; i++)
+                {
+                    var result = ridingResults[i];
+                    if ((highestVotes.Equals(-1) && ridingWinner.Equals(-1)) || (highestVotes < result.TotalVotes))
+                    {
+                        highestVotes = result.TotalVotes;
+                        ridingWinner = i;
+                    }
+                }
+
+                ridingResults[ridingWinner].Elected = true;
+
                 if (!ElectionID.Equals(-1))
                 {
                     foreach (var element in ridingResults)
                         postgres.PastResults.Add(element);
+
                     try
                     {
-                        await postgres.SaveChangesAsync();
+                        int r = await postgres.SaveChangesAsync();
+                        Console.WriteLine($"{r} rows transferred from qldb to postgres.");
                     }
                     catch (Exception e)
                     {
@@ -196,13 +214,39 @@ namespace SmartVotingAPI.Controllers.Application
                     }
                 }
 
-                electionResults.Add(ridingResults);
+                electionResults.Enqueue(ridingResults);
                 index++;
             }
+            
+            if (!ElectionID.Equals(-1))
+            {
+                foreach (var element in candidateList)
+                {
+                    Models.Postgres.PastCandidate temp = new Models.Postgres.PastCandidate
+                    {
+                        CandidateId = element.PersonId,
+                        PartyId = element.PartyId,
+                        RidingId = element.RidingId,
+                        FirstName = element.FirstName,
+                        LastName = element.LastName
+                    };
+                    postgres.PastCandidates.Add(temp);
+                }
 
-            bool sendStatus = await SendReport(electionResults);
+                try
+                {
+                    int r = await postgres.SaveChangesAsync();
+                    Console.WriteLine($"{r} rows transferred from people to past candidates.");
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
 
-            if (index.Equals(338) && !sendStatus)
+            bool sendStatus = await SendReport(electionResults, ridingList, candidateList, null, userClaim);
+
+            if (index.Equals(numRidings) && !sendStatus)
                 return Ok(NewReturnMessage("Failed to send report but transfer to PostgreSQL successful."));
 
             return Ok(electionResults);
@@ -211,20 +255,99 @@ namespace SmartVotingAPI.Controllers.Application
         [HttpGet]
         [Route("GenerateReport")]
         [AllowAnonymous]
-        public async Task<IActionResult> GenerateReport(int ElectionID)
+        public async Task<IActionResult> GenerateReport([Required] int ElectionID)
         {
-            return Ok();
+            var election = await postgres.PastElections.Where(x => x.ElectionId.Equals(ElectionID)).FirstOrDefaultAsync();
+
+            if (election == null)
+                return BadRequest(NewReturnMessage("Election with the provided ID does not exist."));
+
+            Queue<Models.Postgres.PastResult[]> electionResults = new();
+            var ridingList = await postgres.RidingLists.Where(r => r.RidingId > 100).OrderBy(r => r.RidingId).ToArrayAsync();
+            int numRidings = ridingList.Length;
+            var candidateList = await postgres.People.Where(z => z.RoleId.Equals(5)).OrderBy(z => z.PersonId).ToArrayAsync();
+            var pastCandidates = await postgres.PastCandidates.OrderBy(x => x.CandidateId).ToArrayAsync();
+            var rawResults = await postgres.PastResults.Where(x => x.ElectionId.Equals(ElectionID)).OrderBy(x => x.RidingId).OrderBy(x => x.CandidateId).ToArrayAsync();
+
+            for (int i = 0; i < numRidings; i++)
+            {
+                ArrayList temp = new();
+                int currentRiding = ridingList[i].RidingId;
+                int counter = 0;
+                foreach (var riding in rawResults)
+                {
+                    if (riding.RidingId.Equals(currentRiding))
+                    {
+                        temp.Add(riding);
+                        counter++;
+                    }
+                }
+                Models.Postgres.PastResult[] results = new Models.Postgres.PastResult[counter];
+                int nav = 0;
+                foreach (var element in temp)
+                {
+                    results[nav] = (Models.Postgres.PastResult)element;
+                    nav++;
+                }
+                electionResults.Enqueue(results);
+            }
+
+            bool sendStatus = await SendReport(electionResults, ridingList, candidateList, pastCandidates);
+
+            if (!sendStatus)
+                return Ok(NewReturnMessage("Failed to send report election report."));
+
+            return Ok(electionResults);
         }
 
         #region Helper Methods
-        private async Task<bool> SendReport(ArrayList list)
+        private async Task<bool> SendReport(Queue<Models.Postgres.PastResult[]> electionResults, RidingList[] ridings, Person[] candidates = null, Models.Postgres.PastCandidate[]? pastCandidates = null, int? userClaim = -1)
         {
-            return true;
+            string body = "<h1>Smart Voting CC - Election Report</h1><hr/>";
+            foreach (var riding in electionResults)
+            {
+                if (riding.Length.Equals(0))
+                    continue;
+                string name = ridings.Where(x => x.RidingId.Equals(riding[0].RidingId)).Select(x => x.RidingName).First();
+                string header = $"<h2>Results: Riding #{riding[0].RidingId} - {name}</h2>";
+                body += header;
+                body += "<table><tr><th>Candidate ID</th><th>Candidate Name</th><th>Total Votes</th><th>Riding Won (Elected)</th></tr>";
+                foreach (var candidate in riding)
+                {
+                    string? candidateName = null;
+                    if (pastCandidates == null)
+                        candidateName = candidates.Where(x => x.PersonId.Equals(candidate.CandidateId)).Select(x => x.FirstName + " " + x.LastName).First();
+
+                    if (string.IsNullOrEmpty(candidateName) && pastCandidates != null)
+                        candidateName = pastCandidates.Where(x => x.CandidateId.Equals(candidate.CandidateId)).Select(x => x.FirstName + " " + x.LastName).First();
+
+                    body += GetEmailLine(candidate, candidateName);
+                }
+                body += "</table><hr/>";
+            }
+            DateTime ts = DateTime.Now;
+            body += $"<p>Report Timestamp: {ts:dddd, dd MMMM yyyy} at {ts:HH:mm:ss}</p>";
+
+            if (!userClaim.Equals(-1))
+            {
+                Person? person = await postgres.People.FindAsync(userClaim);
+                if (person != null)
+                    body += $"<p>Report Generated By: {person.FirstName} {person.LastName} - User ID #{userClaim}</p>";
+            }
+
+            bool result = await SendEmailSES("Election Administrator", "smartvoting@skdprojects.net", "Election Results Report", body);
+
+            return result;
         }
 
-        private string GetEmailLine(Models.Postgres.PastResult result)
+        private string GetEmailLine(Models.Postgres.PastResult result, string? name)
         {
-            return "";
+            string elected = result.Elected ? "Yes" : "No";
+
+            if (string.IsNullOrEmpty(name))
+                return $"<tr><td>{result.CandidateId}</td><td>Name Not Found</td><td>{result.TotalVotes}</td><td>{elected}</td></tr>";
+            else
+                return $"<tr><td>{result.CandidateId}</td><td>{name}</td><td>{result.TotalVotes}</td><td>{elected}</td></tr>";
         }
         #endregion
     }

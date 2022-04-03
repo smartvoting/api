@@ -278,23 +278,6 @@ namespace SmartVotingAPI.Controllers.Application
 
         #region Centroid & Shapes
         [HttpGet]
-        [Route("Outline/Centroid/List")]
-        public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidList()
-        {
-            string url = "https://represent.opennorth.ca/boundaries/federal-electoral-districts/centroid?limit=1000";
-            HttpResponseMessage onCall = await client.GetAsync(url);
-
-            if (onCall.IsSuccessStatusCode)
-            {
-                var onResponse = await onCall.Content.ReadAsStringAsync();
-                JsonElement onRoot = JsonDocument.Parse(onResponse).RootElement;
-                return Ok();
-            }
-
-            return BadRequest(NewReturnMessage("Open North API call failed."));
-        }
-
-        [HttpGet]
         [Route("Outline/Centroid/{ridingId}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidById(int ridingId)
         {
