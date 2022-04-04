@@ -23,6 +23,6 @@ namespace SmartVotingAPI.Models.Postgres
     {
         public Guid PostId { get; set; }
         public int PartyId { get; set; }
-        public string PostName { get; set; }
+        public string PostName { get; set; } = null!;
     }
 }

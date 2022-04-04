@@ -17,6 +17,7 @@
  *   Capstone I & II - September 2021 to April 2022                                      *
  *****************************************************************************************/
 
+using LinqKit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,10 +32,43 @@ namespace SmartVotingAPI.Controllers.Application
     [ApiVersion("1")]
     [Route("v1/Voters")]
     [ApiController]
-    //[Authorize(Policy = "ElectionOfficials")]
+    [Authorize(Policy = "ElectionOfficials")]
     public class VoterController : BaseController
     {
         public VoterController(PostgresDbContext _context, IOptions<AppSettings> _app) : base(_context, _app) { }
+
+        [HttpPost]
+        [Route("Check")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CheckRegistration(VoterCheck data)
+        {
+            if (data == null)
+                return BadRequest(NewReturnMessage("Voter information is required."));
+
+            DateOnly dob = DateOnly.FromDateTime(data.BirthDate);
+
+            var predicate = PredicateBuilder.New<VoterList>(true);
+            predicate = string.IsNullOrEmpty(data.MiddleName) ? predicate.And(x => x.MiddleName.Equals(null)) : predicate.And(x => x.MiddleName.Equals(data.MiddleName));
+            predicate = string.IsNullOrEmpty(data.UnitNumber) ? predicate.And(x => x.UnitNumber.Equals(null)) : predicate.And(x => x.UnitNumber.Equals(data.UnitNumber));
+
+            var voterEntry = await postgres.VoterLists
+                .Where(a => a.FirstName.Equals(data.FirstName))
+                .Where(a => a.LastName.Equals(data.LastName))
+                .Where(a => a.BirthDate.CompareTo(dob) == 0)
+                .Where(a => a.Gender == data.Gender)
+                .Where(a => a.StreetNumber == data.StreetNumber)
+                .Where(a => a.StreetName.Equals(data.StreetName))
+                .Where(a => a.City.Equals(data.City))
+                .Where(a => a.ProvinceId == data.Province)
+                .Where(a => a.PostCode.Equals(data.PostCode))
+                .Where(predicate)
+                .FirstOrDefaultAsync();
+
+            if (voterEntry == null)
+                return NoContent();
+
+            return Ok();
+        }
 
         [HttpPost]
         [Route("Search")]
@@ -82,7 +116,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpPost]
         [Route("Generate")]
-        //[Authorize(Roles = "SA")]
+        [Authorize(Roles = "SA")]
         public async Task<IActionResult> GenerateVoters([Required] int NumberOfVoters)
         {
             if (NumberOfVoters <= 0)
@@ -161,7 +195,7 @@ namespace SmartVotingAPI.Controllers.Application
 
         [HttpDelete]
         [Route("Delete")]
-        //[Authorize(Roles = "SA")]
+        [Authorize(Roles = "SA")]
         public async Task<IActionResult> DeleteVoterList()
         {
             PostgresDbContext context = new();

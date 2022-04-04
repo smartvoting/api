@@ -21,9 +21,9 @@ namespace SmartVotingAPI.Models.QLDB
 {
     public class VoterToken
     {
-        public string VoterId { get; set; }
+        public string VoterId { get; set; } = null!;
         public int RidingId { get; set; }
         public DateTime Timestamp { get; set; }
-        public string IpAddress { get; set; }
+        public string IpAddress { get; set; } = null!;
     }
 }

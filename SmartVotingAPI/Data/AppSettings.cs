@@ -21,32 +21,32 @@ namespace SmartVotingAPI.Data
 {
     public class Caws
     {
-        public string? Username { get; set; }
-        public string? Password { get; set; }
+        public string Username { get; set; } = null!;
+        public string Password { get; set; } = null!;
     }
 
     public class Capi
     {
-        public string? Mapquest { get; set; }
-        public string? HcaptchaSecret { get; set; }
-        public string? VPN { get; set; }
+        public string Mapquest { get; set; } = null!;
+        public string HcaptchaSecret { get; set; } = null!;
+        public string VPN { get; set; } = null!;
     }
 
     public class Cses
     {
-        public string EmailAddress { get; set; }
-        public string DisplayName { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string Host { get; set; }
+        public string EmailAddress { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
+        public string Username { get; set; } = null!;
+        public string Password { get; set; } = null!;
+        public string Host { get; set; } = null!;
         public int Port { get; set; }
     }
 
     public class Cvote
     {
         public int ElectionID { get; set; }
-        public string? SecretKey { get; set; }
-        public string? LedgerID { get; set; }
+        public string SecretKey { get; set; } = null!;
+        public string LedgerID { get; set; } = null!;
     }
 
     public class AppSettings

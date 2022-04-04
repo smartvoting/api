@@ -35,7 +35,7 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Apply")]
         public async Task<IActionResult> PostApply(Models.DTO.VolunteerApplication application)
         {
-            if (application.PartyId <= 0 || application.RidingId <= 0 || String.IsNullOrEmpty(application.FirstName) || String.IsNullOrEmpty(application.LastName) || String.IsNullOrEmpty(application.PhoneNumber) || String.IsNullOrEmpty(application.EmailAddress))
+            if (application.PartyId <= 0 || application.RidingId <= 0 || string.IsNullOrEmpty(application.FirstName) || string.IsNullOrEmpty(application.LastName) || string.IsNullOrEmpty(application.PhoneNumber) || string.IsNullOrEmpty(application.EmailAddress))
                 return BadRequest();
 
             DateTime timestamp = DateTime.Now;

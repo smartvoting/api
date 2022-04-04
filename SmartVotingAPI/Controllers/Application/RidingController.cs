@@ -25,6 +25,8 @@ using SmartVotingAPI.Models.DTO;
 using System.Text.Json;
 using System.Collections;
 using Microsoft.Extensions.Options;
+using LinqKit;
+using SmartVotingAPI.Models.Postgres;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -41,8 +43,6 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("List")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingList()
         {
-            //var list = await postgres.RidingLists.ToArrayAsync();
-
             var list = await postgres.RidingLists
                 .Join(postgres.OfficeLists, r => r.OfficeId, o => o.OfficeId, (r, o) => new { r, o })
                 .Join(postgres.OfficeTypes, ro => ro.o.TypeId, t => t.TypeId, (ro, t) => new { ro, t })
@@ -84,8 +84,6 @@ namespace SmartVotingAPI.Controllers.Application
             if (ridingId <= 0)
                 return BadRequest(new { message = "Invalid riding id number." });
 
-            //var riding = await postgres.RidingLists.FindAsync(ridingId);
-
             Riding? riding = await GetRidingByIdNumber(ridingId);
 
             if (riding == null)
@@ -98,7 +96,7 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Locate/City/{city}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByCity(string city)
         {
-            if (String.IsNullOrEmpty(city))
+            if (string.IsNullOrEmpty(city))
                 return BadRequest(NewReturnMessage("A city is required."));
 
             var ridings = await postgres.OfficeLists
@@ -129,13 +127,6 @@ namespace SmartVotingAPI.Controllers.Application
 
             if (ridings == null)
                 return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
-
-            //foreach (Riding riding in ridings)
-            //{
-            //    Coordinates gps = await GetRidingCentroid(riding.Id);
-            //    if (gps != null)
-            //        riding.Centroid = gps;
-            //}
 
             return Ok(ridings);
         }
@@ -178,13 +169,6 @@ namespace SmartVotingAPI.Controllers.Application
             if (ridings == null)
                 return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
 
-            //foreach (var riding in ridings)
-            //{
-            //    Coordinates gps = await GetRidingCentroid(riding.Id);
-            //    if (gps != null)
-            //        riding.Centroid = gps;
-            //}
-
             return Ok(ridings);
         }
 
@@ -192,10 +176,10 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("Locate/Riding/{ridingName}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetRidingByRidingName(string ridingName)
         {
-            if (String.IsNullOrEmpty(ridingName))
+            if (string.IsNullOrEmpty(ridingName))
                 return BadRequest(NewReturnMessage("A riding name is required."));
 
-            var ridings = await postgres.RidingLists
+            Riding[] ridings = await postgres.RidingLists
                 .Where(r => r.RidingName.ToLower().Contains(ridingName.ToLower()))
                 .Join(postgres.OfficeLists, r => r.OfficeId, o => o.OfficeId, (r, o) => new { r, o })
                 .Join(postgres.ProvinceLists, ro => ro.o.ProvinceId, l => l.ProvinceId, (ro, l) => new { ro, l })
@@ -215,6 +199,11 @@ namespace SmartVotingAPI.Controllers.Application
                         Province = x.l.ProvinceName,
                         PostCode = x.ro.o.PostCode,
                         IsPublic = x.ro.o.IsPublic
+                    },
+                    Centroid = new Coordinates
+                    {
+                        Latitude = x.ro.r.Latitude,
+                        Longitude = x.ro.r.Longitude,
                     }
                 })
                 .OrderBy(z => z.Id)
@@ -223,12 +212,22 @@ namespace SmartVotingAPI.Controllers.Application
             if (ridings == null)
                 return BadRequest(NewReturnMessage("No ridings found located in the city provided."));
 
-            //foreach (var riding in ridings)
-            //{
-            //    Coordinates gps = await GetRidingCentroid(riding.Id);
-            //    if (gps != null)
-            //        riding.Centroid = gps;
-            //}
+            foreach (var riding in ridings)
+            {
+                riding.Candidates = await postgres.People
+                    .Where(x => x.RidingId.Equals(riding.Id))
+                    .Where(x => x.RoleId.Equals(5))
+                    .Join(postgres.PartyLists, x => x.PartyId, y => y.PartyId, (x, y) => new { x, y })
+                    .Select(z => new Models.DTO.Person
+                    {
+                        Id = z.x.PersonId,
+                        FirstName = z.x.FirstName,
+                        LastName = z.x.LastName,
+                        PartyId = z.x.PartyId,
+                        PartyName = z.y.PartyName
+                    })
+                    .ToArrayAsync();
+            }
 
             return Ok(ridings);
         }
@@ -273,12 +272,8 @@ namespace SmartVotingAPI.Controllers.Application
                         }
                     }
 
-                    //Console.WriteLine();
-
                     if (ridingId == -1)
                         return BadRequest(new { message = "Failed to get riding id number from Open North API." });
-
-                    //var riding = await postgres.RidingLists.FindAsync(ridingId);
 
                     Riding? riding = await GetRidingByIdNumber(ridingId);
 
@@ -297,33 +292,57 @@ namespace SmartVotingAPI.Controllers.Application
 
         #region Centroid & Shapes
         [HttpGet]
+        [Route("Outline/Centroid/List")]
+        public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidList()
+        {
+            var rawRidings = await postgres.RidingLists.OrderBy(x => x.RidingName).ToArrayAsync();
+
+            if (rawRidings == null)
+                return NoContent();
+
+            ArrayList ridings = new();
+
+            foreach (var r in rawRidings)
+            {
+                Riding temp = new();
+                temp.Id = r.RidingId;
+                temp.Name = r.RidingName;
+                temp.Centroid = new()
+                {
+                    Latitude = r.Latitude,
+                    Longitude = r.Longitude
+                };
+                ridings.Add(temp);
+            }
+
+            return Ok(ridings);
+        }
+
+        [HttpGet]
         [Route("Outline/Centroid/{ridingId}")]
         public async Task<ActionResult<IEnumerable<Riding>>> GetCentroidById(int ridingId)
         {
             if (ridingId <= 0)
                 return BadRequest(new { message = "Invalid riding id number." });
 
-            HttpResponseMessage openNorthCall = await client.GetAsync(GetONBoundariesByRidingIdCall(ridingId));
-
-            if (openNorthCall.IsSuccessStatusCode)
-            {
-                var openNorthResponse = await openNorthCall.Content.ReadAsStringAsync();
-                JsonDocument openNorthJson = JsonDocument.Parse(openNorthResponse);
-                JsonElement openNorthRoot = openNorthJson.RootElement;
-                Riding riding = new Riding();
-                riding.Id = ridingId;
-                riding.Name = openNorthRoot.GetProperty("name").ToString();
-                riding.Centroid = new Coordinates
+            var riding = await postgres.RidingLists
+                .Where(x => x.RidingId.Equals(ridingId))
+                .Select(x => new Riding
                 {
-                    Latitude = openNorthRoot.GetProperty("centroid").GetProperty("coordinates")[1].GetDecimal(),
-                    Longitude = openNorthRoot.GetProperty("centroid").GetProperty("coordinates")[0].GetDecimal(),
-                    Type = openNorthRoot.GetProperty("centroid").GetProperty("type").ToString()
-                };
+                    Id = x.RidingId,
+                    Name = x.RidingName,
+                    Centroid = new()
+                    {
+                        Latitude = x.Latitude,
+                        Longitude = x.Longitude
+                    }
+                })
+                .ToArrayAsync();
 
-                return Ok(riding);
-            }
+            if (riding == null)
+                return NoContent();
 
-            return BadRequest(NewReturnMessage("Open North API call failed."));
+            return Ok(riding);
         }
 
         [HttpGet]

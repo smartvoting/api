@@ -25,8 +25,8 @@ namespace SmartVotingAPI.Models.DTO.Vote
     {
         [Required]
         [StringLength(12)]
-        public string CardId { get; set; }
-        
+        public string CardId { get; set; } = null!;
+
         [Required]
         public int CardPin { get; set; }
 

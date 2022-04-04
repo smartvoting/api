@@ -21,9 +21,9 @@ namespace SmartVotingAPI.Models.DTO
 {
     public class BlogList
     {
-        public string PartyName { get; set; }
+        public string PartyName { get; set; } = null!;
         public int PartyId { get; set; }
-        public string PostTitle { get; set; }
-        public string PostId { get; set; }
+        public string PostTitle { get; set; } = null!;
+        public string PostId { get; set; } = null!;
     }
 }

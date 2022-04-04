@@ -23,8 +23,8 @@ namespace SmartVotingAPI.Models.DTO
     {
         public int TopicId { get; set; }
         public int PartyId { get; set; }
-        public string TopicTitle { get; set; }
-        public string TopicBody { get; set; }
-        public string DateModified { get; set; }
+        public string TopicTitle { get; set; } = null!;
+        public string TopicBody { get; set; } = null!;
+        public string DateModified { get; set; } = null!;
     }
 }

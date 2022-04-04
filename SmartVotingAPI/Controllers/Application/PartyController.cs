@@ -173,43 +173,6 @@ namespace SmartVotingAPI.Controllers.Application
                 })
                 .ToArrayAsync();
 
-            //var candidates = await postgres.People
-            //    .Where(p => p.PartyId == partyId && p.RoleId == 5)
-            //    .Join(postgres.SocialMediaLists, p => p.SocialId, s => s.SocialId, (p, s) => new { p, s })
-            //    .Join(postgres.OfficeLists, ps => ps.p.OfficeId, o => o.OfficeId, (ps, o) => new { ps, o })
-            //    .Join(postgres.OfficeTypes, pso => pso.o.TypeId, t => t.TypeId, (pso, t) => new { pso, t })
-            //    .Join(postgres.ProvinceLists, psot => psot.pso.o.ProvinceId, n => n.ProvinceId, (psot, n) => new { psot, n })
-            //    .Select(x => new Models.DTO.Person
-            //    {
-            //        FirstName = x.psot.pso.ps.p.FirstName,
-            //        LastName = x.psot.pso.ps.p.LastName,
-            //        EmailAddress = x.psot.pso.ps.p.EmailAddress,
-            //        PhoneNumber = x.psot.pso.ps.p.PhoneNumber,
-            //        Office = new Office
-            //        {
-            //            Type = x.psot.t.TypeName,
-            //            StreetNumber = x.psot.pso.o.StreetNumber,
-            //            StreetName = x.psot.pso.o.StreetName,
-            //            UnitNumber = x.psot.pso.o.UnitNumber,
-            //            City = x.psot.pso.o.City,
-            //            Province = x.n.ProvinceName,
-            //            PostCode = x.psot.pso.o.PostCode,
-            //            PoBox = x.psot.pso.o.PoBox,
-            //            IsPublic = x.psot.pso.o.IsPublic
-            //        },
-            //        SocialMedia = new SocialMedia
-            //        {
-            //            TwitterId = x.psot.pso.ps.s.TwitterId,
-            //            InstagramId = x.psot.pso.ps.s.InstagramId,
-            //            FacebookId = x.psot.pso.ps.s.FacebookId,
-            //            YoutubeId = x.psot.pso.ps.s.YoutubeId,
-            //            SnapchatId = x.psot.pso.ps.s.SnapchatId,
-            //            FlickrId = x.psot.pso.ps.s.FlickrId,
-            //            TiktokId = x.psot.pso.ps.s.TiktokId
-            //        }
-            //    })
-            //    .ToArrayAsync();
-
             party.Candidates = candidates;
 
             return Ok(party);
@@ -305,9 +268,6 @@ namespace SmartVotingAPI.Controllers.Application
 
             postgres.PartyBlogLists.Add(postgresql);
             var pResult = await postgres.SaveChangesAsync();
-
-            if (pResult == null)
-                return BadRequest();
 
             PartyBlog dynamodb = new PartyBlog();
             dynamodb.PartyId = partyClaim;

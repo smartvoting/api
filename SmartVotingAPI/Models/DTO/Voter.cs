@@ -21,7 +21,7 @@ namespace SmartVotingAPI.Models.DTO
 {
     public class Voter
     {
-        public string VoterId { get; set; } = null!;
+        public string? VoterId { get; set; }
         public int RidingId { get; set; }
         public string FirstName { get; set; } = null!;
         public string? MiddleName { get; set; }

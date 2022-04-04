@@ -35,8 +35,6 @@ namespace SmartVotingAPI.Controllers.Application
         [Route("List")]
         public async Task<ActionResult<IEnumerable<Province>>> GetProvinceList()
         {
-            //var list = await postgres.ProvinceLists.ToArrayAsync();
-
             var list = await postgres.ProvinceLists
                 .Select(x => new Province
                 {
@@ -58,8 +56,6 @@ namespace SmartVotingAPI.Controllers.Application
         {
             if (provinceId <= 0)
                 return BadRequest(new { message = "Invalid province id number." });
-
-            //var province = await postgres.ProvinceLists.FindAsync(provinceId);
 
             var province = await postgres.ProvinceLists
                 .Where(p => p.ProvinceId == provinceId)

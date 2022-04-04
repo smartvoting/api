@@ -177,35 +177,5 @@ namespace SmartVotingAPI.Controllers.Application
 
             return Ok(list);
         }
-
-        //[HttpPost]
-        //[Route("Record")]
-        //public async Task<IActionResult> PostTransferResults()
-        //{
-        //    //RidingList[] ridings = await postgres.RidingLists.OrderBy(a => a.RidingId).ToArrayAsync();
-        //    //int length = ridings.Length;
-        //    //var ballots = new object();
-
-        //    //IAsyncQldbDriver driver = AsyncQldbDriver.Builder()
-        //    //    .WithLedger(appSettings.Value.Vote.LedgerID)
-        //    //    .WithSerializer(new ObjectSerializer())
-        //    //    .Build();
-
-        //    //var read = await driver.Execute(async txn =>
-        //    //{
-        //    //    IQuery<VoteToken> query = txn.Query<VoteToken>("SELECT * FROM Ballots WHERE RidingId = ?", 35027);
-        //    //    var result = await txn.Execute(query);
-        //    //    return await result.ToArrayAsync();
-        //    //});
-
-        //    //Models.Postgres.PastResult result = new();
-
-        //    //Console.WriteLine(read.Length);
-
-        //    ////await foreach (var i in read)
-        //    ////    Console.WriteLine(i.ToString());
-
-        //    return Ok();
-        //}
     }
 }

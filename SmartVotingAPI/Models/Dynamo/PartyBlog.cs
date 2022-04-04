@@ -30,16 +30,16 @@ namespace SmartVotingAPI.Models.Dynamo
 
         // Sort key
         [DynamoDBRangeKey("blogId")]
-        public string BlogId { get; set; }
+        public string BlogId { get; set; } = null!;
 
         [DynamoDBProperty("blogBody")]
-        public string? BlogBody { get; set; }
+        public string? BlogBody { get; set; } = null!;
 
         [DynamoDBProperty("datePosted")]
-        public string? DatePosted { get; set; }
+        public string? DatePosted { get; set; } = null!;
 
         [DynamoDBProperty("dateModified")]
-        public string? DateModified { get; set; }
+        public string? DateModified { get; set; } = null!;
 
         [DynamoDBProperty("writerId")]
         public int PersonId { get; set; }

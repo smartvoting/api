@@ -458,6 +458,10 @@ namespace SmartVotingAPI.Data
                 entity.Property(e => e.RidingPhone)
                     .HasColumnType("character varying")
                     .HasColumnName("riding_phone");
+
+                entity.Property(e => e.Latitude).HasColumnName("latitude");
+
+                entity.Property(e => e.Longitude).HasColumnName("longitude");
             });
 
             modelBuilder.Entity<RoleList>(entity =>

@@ -27,5 +27,7 @@ namespace SmartVotingAPI.Models.Postgres
         public string? RidingEmail { get; set; }
         public string? RidingPhone { get; set; }
         public string? RidingFax { get; set; }
+        public decimal Latitude { get; set; }
+        public decimal Longitude { get; set; }
     }
 }

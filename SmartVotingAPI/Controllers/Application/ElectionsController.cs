@@ -319,7 +319,7 @@ namespace SmartVotingAPI.Controllers.Application
         }
 
         #region Helper Methods
-        private async Task<bool> SendReport(Queue<Models.Postgres.PastResult[]> electionResults, RidingList[] ridings, Person[] candidates = null, Models.Postgres.PastCandidate[]? pastCandidates = null, int? userClaim = -1)
+        private async Task<bool> SendReport(Queue<Models.Postgres.PastResult[]> electionResults, RidingList[] ridings, Person[]? candidates = null, Models.Postgres.PastCandidate[]? pastCandidates = null, int? userClaim = -1)
         {
             string body = "<h1>Smart Voting CC - Election Report</h1><hr/>";
             foreach (var riding in electionResults)

@@ -24,12 +24,12 @@ namespace SmartVotingAPI.Models.DTO.Vote
     public class StepThree : StepBase
     {
         [Required]
-        public TaxEntry LineOne { get; set; }
+        public TaxEntry LineOne { get; set; } = null!;
 
         [Required]
-        public TaxEntry LineTwo { get; set; }
+        public TaxEntry LineTwo { get; set; } = null!;
 
         [Required]
-        public TaxEntry LineThree { get; set; }
+        public TaxEntry LineThree { get; set; } = null!;
     }
 }

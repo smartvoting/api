@@ -32,6 +32,8 @@ using System.Text.Json;
 using Amazon.QLDB.Driver.Serialization;
 using SmartVotingAPI.Models.QLDB;
 using Microsoft.AspNetCore.Cors;
+using SmartVotingAPI.Models.Postgres;
+using LinqKit;
 
 namespace SmartVotingAPI.Controllers.Application
 {
@@ -63,6 +65,10 @@ namespace SmartVotingAPI.Controllers.Application
 
             DateOnly dob = DateOnly.FromDateTime(data.BirthDate);
 
+            var predicate = PredicateBuilder.New<VoterList>(true);
+            predicate = string.IsNullOrEmpty(data.MiddleName) ? predicate.And(x => x.MiddleName.Equals(null)) : predicate.And(x => x.MiddleName.Equals(data.MiddleName));
+            predicate = string.IsNullOrEmpty(data.UnitNumber) ? predicate.And(x => x.UnitNumber.Equals(null)) : predicate.And(x => x.UnitNumber.Equals(data.UnitNumber));
+
             var voterEntry = await postgres.VoterLists
                 .Where(a => a.FirstName.Equals(data.FirstName))
                 .Where(a => a.LastName.Equals(data.LastName))
@@ -73,6 +79,7 @@ namespace SmartVotingAPI.Controllers.Application
                 .Where(a => a.City.Equals(data.City))
                 .Where(a => a.ProvinceId == data.Province)
                 .Where(a => a.PostCode.Equals(data.PostCode))
+                .Where(predicate)
                 .FirstOrDefaultAsync();
 
             if (voterEntry == null)
@@ -80,15 +87,6 @@ namespace SmartVotingAPI.Controllers.Application
 
             if (voterEntry.VoteCast)
                 return Unauthorized();
-
-            bool verifiedMiddleName = false;
-            bool verifiedUnitNumber = false;
-
-            if (!string.IsNullOrEmpty(voterEntry.MiddleName) && !string.IsNullOrEmpty(data.MiddleName))
-                verifiedMiddleName = voterEntry.MiddleName.Equals(data.MiddleName);
-
-            if (!string.IsNullOrEmpty(voterEntry.UnitNumber) && !string.IsNullOrEmpty(data.UnitNumber))
-                verifiedUnitNumber = voterEntry.UnitNumber.Equals(data.UnitNumber);
 
             VoterToken voter = new()
             {
@@ -458,7 +456,6 @@ namespace SmartVotingAPI.Controllers.Application
                 bool relay = bool.Parse(root.GetProperty("security").GetProperty("relay").ToString());
                 if (vpn || proxy || tor || relay)
                     return false;
-                //return "Please disconnect from your VPN, Proxy, Tor or Relay service to continue.";
             }
 
             return true;
@@ -467,49 +464,49 @@ namespace SmartVotingAPI.Controllers.Application
         // Returns true is validation is successful otherwise false
         private async Task<bool> IsValidAuthKey(string key)
         {
-            Guid publicKey = Guid.Parse(key);
-            Guid secretKey = Guid.Parse(appSettings.Value.Vote.SecretKey);
-
-            var result = await postgres.ElectionTokens.FindAsync(publicKey);
-
-            if (result == null)
-                return false;
-
-            if (!result.IsActive)
-                return false;
-
-            if (result.SecretId.CompareTo(secretKey) != 0)
-                return false;
-
+            // This return true override statement is to allow ongoing usage of the application. In a real production environment, this would be removed and the commented out code below would be used instead.
             return true;
+
+            // The following election token checks would be used in a real production environment.
+            //Guid publicKey = Guid.Parse(key);
+            //Guid secretKey = Guid.Parse(appSettings.Value.Vote.SecretKey);
+
+            //var result = await postgres.ElectionTokens.FindAsync(publicKey);
+
+            //if (result == null)
+            //    return false;
+
+            //if (!result.IsActive)
+            //    return false;
+
+            //if (result.SecretId.CompareTo(secretKey) != 0)
+            //    return false;
+            
+            //return true;
         }
 
         // Returns true is validation is successful otherwise false
         private async Task<bool> IsActiveElection(string key)
         {
-            Guid publicKey = Guid.Parse(key);
-            Guid secretKey = Guid.Parse(appSettings.Value.Vote.SecretKey);
-            //DateOnly date = DateOnly.FromDateTime(timestamp);
-            //TimeOnly time = TimeOnly.FromDateTime(timestamp);
-
-            var result = await postgres.ElectionTokens.FindAsync(publicKey);
-
-            if (result == null)
-                return false;
-
-            if (!result.IsActive)
-                return false;
-
-            if (result.SecretId.CompareTo(secretKey) != 0)
-                return false;
-
-            //if (!result.ElectionDate.Equals(date))
-            //    return false;
-
-            //if (!time.IsBetween(result.StartTime, result.EndTime))
-            //    return false;
-
+            // This return true override statement is to allow ongoing usage of the application. In a real production environment, this would be removed and the commented out code below would be used instead.
             return true;
+
+            // The following election token checks would be used in a real production environment.
+            //Guid publicKey = Guid.Parse(key);
+            //Guid secretKey = Guid.Parse(appSettings.Value.Vote.SecretKey);
+
+            //var result = await postgres.ElectionTokens.FindAsync(publicKey);
+
+            //if (result == null)
+            //    return false;
+
+            //if (!result.IsActive)
+            //    return false;
+
+            //if (result.SecretId.CompareTo(secretKey) != 0)
+            //    return false;
+
+            //return true;
         }
 
         // Returns true is validation is successful otherwise false
@@ -530,8 +527,8 @@ namespace SmartVotingAPI.Controllers.Application
             var token = new JwtSecurityToken(
                 issuer: tokenIssuer,
                 claims: claims,
-                expires: DateTime.Now.AddDays(14),
-                //expires: DateTime.Now.AddMinutes(15),
+                //expires: DateTime.Now.AddDays(14), - ONLY FOR TESTING & DEVELOPMENT
+                expires: DateTime.Now.AddMinutes(15),
                 signingCredentials: credentials
             );
 
@@ -557,8 +554,8 @@ namespace SmartVotingAPI.Controllers.Application
             var token = new JwtSecurityToken(
                 issuer: tokenIssuer,
                 claims: claims,
-                expires: DateTime.Now.AddDays(14),
-                //expires: DateTime.Now.AddMinutes(10),
+                //expires: DateTime.Now.AddDays(14), - ONLY FOR TESTING & DEVELOPMENT
+                expires: DateTime.Now.AddMinutes(10),
                 signingCredentials: credentials
             );
 

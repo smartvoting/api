@@ -103,13 +103,13 @@ namespace SmartVotingAPI.Controllers
         {
             string baseUrl = "http://www.mapquestapi.com/geocoding/v1/address";
             //string apiKey = "CcqNKJY75Y0TotzTG1JZhLo3F8MrulEA";
-            return String.Format("{0}?key={1}&location={2}", baseUrl, appSettings.Value.API.Mapquest, postCode);
+            return string.Format("{0}?key={1}&location={2}", baseUrl, appSettings.Value.API.Mapquest, postCode);
         }
 
         protected string GetONBoundariesByCoordCall (string lat, string lng)
         {
             string baseUrl = "https://represent.opennorth.ca/boundaries/?contains=";
-            return String.Format("{0}{1},{2}", baseUrl, lat, lng);
+            return string.Format("{0}{1},{2}", baseUrl, lat, lng);
         }
 
         protected string GetONBoundariesByRidingIdCall(int ridingId, bool shape = false)
@@ -117,14 +117,14 @@ namespace SmartVotingAPI.Controllers
             string baseUrl = "https://represent.opennorth.ca/boundaries/federal-electoral-districts/";
 
             if (shape)
-                return String.Format("{0}{1}/shape", baseUrl, ridingId.ToString(), "shape");
+                return string.Format("{0}{1}/shape", baseUrl, ridingId.ToString(), "shape");
 
-            return String.Format("{0}{1}", baseUrl, ridingId.ToString());
+            return string.Format("{0}{1}", baseUrl, ridingId.ToString());
         }
 
         protected string GetTextHash(string text)
         {
-            byte[] temp = null;
+            byte[]? temp = null;
 
             using (HashAlgorithm algorithm = SHA256.Create())
                 temp = algorithm.ComputeHash(Encoding.UTF8.GetBytes(text));
@@ -139,12 +139,10 @@ namespace SmartVotingAPI.Controllers
         protected async Task<bool> VerifyHcaptcha(string token, string remoteIp)
         {
             string baseUrl = "https://hcaptcha.com/siteverify";
-            List<KeyValuePair<string, string>> postData = new List<KeyValuePair<string, string>>
+            List<KeyValuePair<string, string>> postData = new()
             {
                 new KeyValuePair<string, string>("secret", appSettings.Value.API.HcaptchaSecret),
                 new KeyValuePair<string, string>("response", token),
-                //new KeyValuePair<string, string>("secret", "0x0000000000000000000000000000000000000000"),
-                //new KeyValuePair<string, string>("response", "10000000-aaaa-bbbb-cccc-000000000001"),
                 new KeyValuePair<string, string>("remoteip", remoteIp)
             };
 
